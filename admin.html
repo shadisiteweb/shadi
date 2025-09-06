@@ -6,8 +6,11 @@
 <style>
 body { font-family: Arial; background:#f4f4f4; }
 .container { max-width:800px; margin:auto; padding:20px; }
-button { padding:8px 15px; margin:5px; border:none; border-radius:5px; background:#0077ff; color:white; cursor:pointer; }
-button:hover { background:#0055cc; }
+button { padding:6px 12px; margin:2px; border:none; border-radius:5px; cursor:pointer; }
+button.logoutBtn { background:#ff5555; color:white; }
+button.logoutBtn:hover { background:#cc0000; }
+button.cancelBtn { background:#ff9900; color:white; }
+button.cancelBtn:hover { background:#cc7700; }
 .hidden { display:none; }
 table { width:100%; border-collapse:collapse; }
 td, th { border:1px solid #ccc; padding:8px; text-align:center; }
@@ -27,9 +30,9 @@ td, th { border:1px solid #ccc; padding:8px; text-align:center; }
 
 <div class="container hidden" id="adminDiv">
 <h2>Admin - Réservations</h2>
-<button onclick="logout()">Déconnexion</button>
+<button class="logoutBtn" onclick="logout()">Déconnexion</button>
 <table>
-<tr><th>Jour</th><th>Nom</th><th>Email</th><th>Message</th></tr>
+<tr><th>Jour</th><th>Nom</th><th>Email</th><th>Message</th><th>Action</th></tr>
 <tbody id="adminTable"></tbody>
 </table>
 </div>
@@ -52,18 +55,4 @@ function login(){
 
 function logout(){
     document.getElementById('adminDiv').classList.add('hidden');
-    document.getElementById('loginDiv').classList.remove('hidden');
-}
-
-function generateAdminTable(){
-    const tbody=document.getElementById('adminTable');
-    tbody.innerHTML="";
-    reservations.forEach((r,index)=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${r.jour}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>`;
-        tbody.appendChild(tr);
-    });
-}
-</script>
-</body>
-</html>
+    document.getElementById('loginDiv').class
