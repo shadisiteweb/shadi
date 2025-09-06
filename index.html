@@ -1,142 +1,93 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Réservation avec calendrier</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      color: #000;
-      transition: 0.3s;
-    }
-    .dark-mode {
-      background: #121212;
-      color: #fff;
-    }
-    .container {
-      max-width: 600px;
-      margin: auto;
-      padding: 20px;
-    }
-    .attention {
-      background: #ffdddd;
-      border: 1px solid #ff5c5c;
-      padding: 10px;
-      border-radius: 8px;
-      font-weight: bold;
-      color: #a80000;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-    .calendar {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-      margin: 20px 0;
-    }
-    .day {
-      padding: 20px;
-      text-align: center;
-      border-radius: 8px;
-      cursor: pointer;
-      background: white;
-      border: 1px solid #ccc;
-      transition: 0.2s;
-    }
-    .day:hover {
-      background: #cce5ff;
-    }
-    .reserved {
-      background: #ccc;
-      color: #666;
-      cursor: not-allowed;
-    }
-    input, textarea, button {
-      width: 100%;
-      padding: 10px;
-      margin: 6px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background: #0077ff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0055cc;
-    }
-    .switch-mode {
-      margin-bottom: 20px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Shadi Piscine - Réservation</title>
+<style>
+body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
+.dark-mode { background:#121212; color:#fff; }
+.container { max-width:600px; margin:auto; padding:20px; }
+.attention { background:#ffdddd; border:1px solid #ff5c5c; padding:10px; border-radius:8px; font-weight:bold; color:#a80000; margin-bottom:15px; text-align:center; }
+input, textarea, button { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
+button { background:#0077ff; color:white; border:none; cursor:pointer; }
+button:hover { background:#0055cc; }
+.calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:10px 0; }
+.day { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; }
+.day:hover { background:#cce5ff; }
+.day.reserved { background:#ccc; color:#666; cursor:not-allowed; }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>Réservation</h2>
+<div class="container">
+<h2>Shadi Piscine - Réservation</h2>
+<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
 
-    <div class="switch-mode">
-      <button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
-    </div>
+<div class="attention">
+⚠️ Attention, vérifiez bien vos informations avant d’envoyer !
+</div>
 
-    <div class="attention">
-      ⚠️ Attention, vérifiez bien vos informations avant d’envoyer !
-    </div>
+<h3>Calendrier</h3>
+<div class="calendar" id="calendar"></div>
 
-    <h3>Calendrier</h3>
-    <div class="calendar" id="calendar"></div>
+<form id="resaForm">
+<label>Nom complet :</label>
+<input type="text" name="Nom" required>
 
-    <form id="formResa" action="mailto:TON_EMAIL_ICI" method="post" enctype="text/plain">
-      <label>Nom complet :</label>
-      <input type="text" name="Nom" required>
+<label>Email :</label>
+<input type="email" name="Email" required>
 
-      <label>Email :</label>
-      <input type="email" name="Email" required>
+<label>Date choisie :</label>
+<input type="text" id="selectedDate" name="Date" readonly required>
 
-      <label>Date choisie :</label>
-      <input type="text" id="selectedDate" name="Date" readonly required>
+<label>Message :</label>
+<textarea name="Message" rows="4"></textarea>
 
-      <label>Message :</label>
-      <textarea name="Message" rows="4"></textarea>
+<button type="submit">Envoyer la réservation</button>
+</form>
+</div>
 
-      <button type="submit">Envoyer la réservation</button>
-    </form>
-  </div>
+<script>
+// Jours déjà réservés
+const reservedDays = [5,10,18];
+const calendar = document.getElementById('calendar');
 
-  <script>
-    // Exemple de jours réservés
-    const reservedDays = [5, 10, 18]; // ici ce sont des numéros de jours
-
-    function generateCalendar() {
-      const calendar = document.getElementById("calendar");
-      calendar.innerHTML = "";
-      for (let day = 1; day <= 30; day++) {
-        const div = document.createElement("div");
-        div.className = "day";
+// Génération du calendrier
+function generateCalendar(){
+    calendar.innerHTML="";
+    for(let day=1; day<=30; day++){
+        const div = document.createElement('div');
         div.textContent = day;
-
-        if (reservedDays.includes(day)) {
-          div.classList.add("reserved");
+        div.className = 'day';
+        if(reservedDays.includes(day)){
+            div.classList.add('reserved');
         } else {
-          div.addEventListener("click", () => {
-            document.getElementById("selectedDate").value = `Jour ${day}`;
-            const allDays = document.querySelectorAll(".day");
-            allDays.forEach(d => d.style.border = "1px solid #ccc");
-            div.style.border = "2px solid #0077ff";
-          });
+            div.addEventListener('click', ()=>{
+                document.getElementById('selectedDate').value = `Jour ${day}`;
+                document.querySelectorAll('.day').forEach(d=>d.style.border='1px solid #ccc');
+                div.style.border='2px solid #0077ff';
+            });
         }
-
         calendar.appendChild(div);
-      }
     }
+}
 
-    function toggleMode() {
-      document.body.classList.toggle("dark-mode");
+generateCalendar();
+
+// Mode sombre/blanc
+function toggleMode(){
+    document.body.classList.toggle('dark-mode');
+}
+
+// Pop-up de confirmation avant envoi
+document.getElementById('resaForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    if(confirm("Confirmez-vous votre réservation ?")){
+        alert("Réservation envoyée !");
+        // Ici tu peux ajouter un envoi email réel (EmailJS ou Formspree)
+        this.reset();
+        document.getElementById('selectedDate').value = '';
     }
-
-    generateCalendar();
-  </script>
+});
+</script>
 </body>
 </html>
