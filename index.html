@@ -7,7 +7,7 @@
 body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
 .container { max-width:600px; margin:auto; padding:20px; }
-input, button, textarea, select { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
+input, button, textarea { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
 button { border:none; cursor:pointer; border-radius:5px; padding:8px; margin:5px; }
 button:hover { opacity:0.9; }
 button.logoutBtn { background:#ff5555; color:white; }
@@ -142,41 +142,42 @@ function toggleMode(){ document.body.classList.toggle('dark-mode'); }
 function generateCalendar(userEmail){
     const calendar = document.getElementById('calendar');
     calendar.innerHTML="";
-    reservations.forEach((r,index)=>{
-        if(r.annule && r.email === userEmail){
-            alert(`Votre réservation pour le jour ${r.jour} à ${r.heure} a été annulée par l'admin !`);
-            reservations.splice(index,1);
-            localStorage.setItem('reservations',JSON.stringify(reservations));
-        }
-    });
+
+    // Supprimer les réservations annulées
+    reservations = reservations.filter(r=>!r.annule);
+    localStorage.setItem('reservations', JSON.stringify(reservations));
 
     for(let day=1; day<=30; day++){
         const div=document.createElement('div');
         div.textContent=day;
         div.className='day';
-        const dayReservations = reservations.filter(r=>r.jour===day).map(r=>r.heure);
-        if(reservations.find(r=>r.jour===day) || blockedDays.includes(day)){
+        const dayReservations = reservations.filter(r=>r.jour===day);
+        if(dayReservations.length>0 || blockedDays.includes(day)){
             div.classList.add('reserved');
         } else {
             div.addEventListener('click',()=>{
                 let hour;
                 do{
-                    hour = prompt("Entrez l'heure souhaitée (HH:MM), de 09:00 à 16:00, pause 30 min entre cours :");
-                    if(hour === null) return; // annulation
+                    hour = prompt("Entrez l'heure souhaitée (HH:MM), 09:00-16:00, chaque cours 1h + 30 min pause :");
+                    if(hour===null) return;
                     const [h,m] = hour.split(':').map(Number);
                     if(h<9 || h>16 || m<0 || m>=60){ alert("Heure invalide !"); continue; }
 
-                    // Vérifier conflits et pause 30 min
+                    // Vérifier conflit avec toutes les réservations du jour
                     let conflict = false;
-                    for(let existingHour of dayReservations){
-                        const [eh,em] = existingHour.split(':').map(Number);
-                        const diff = Math.abs((eh*60+em)-(h*60+m));
-                        if(diff < 90){ conflict=true; break; } // 1h cours + 30min pause
+                    for(const r of dayReservations){
+                        const [rh,rm] = r.heure.split(':').map(Number);
+                        const start = rh*60+rm;
+                        const endWithPause = start + 90; // 60min cours + 30min pause
+                        const chosenMinutes = h*60+m;
+                        if(chosenMinutes >= start && chosenMinutes < endWithPause){
+                            conflict = true; break;
+                        }
                     }
-                    if(conflict){ alert("Ce créneau est occupé ou il y a une pause de 30 min après une réservation."); continue; }
+                    if(conflict){ alert("Ce créneau est occupé ou pendant la pause de 30 min après un cours."); continue; }
 
                     break;
-                } while(true);
+                }while(true);
 
                 selectedDay = day;
                 selectedHour = hour;
@@ -209,7 +210,7 @@ document.getElementById('resaForm').addEventListener('submit',function(e){
     }
 });
 
-// --- Annulation ---
+// --- Annulation client ---
 function showCancelButton(userEmail){
     const myResa = reservations.find(r => r.email === userEmail && !r.annule);
     const btn = document.getElementById('cancelMyResaBtn');
