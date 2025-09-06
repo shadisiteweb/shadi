@@ -8,7 +8,7 @@ body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
 .container { max-width:600px; margin:auto; padding:20px; }
 input, button, textarea, select { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
-button { border:none; cursor:pointer; border-radius:5px; }
+button { border:none; cursor:pointer; border-radius:5px; padding:8px; margin:5px; }
 button:hover { opacity:0.9; }
 button.logoutBtn { background:#ff5555; color:white; }
 button.createBtn { background:#00aa55; color:white; }
@@ -90,6 +90,7 @@ const adminUser = {username:"admin", password:"admin"};
 let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
 let blockedDays = JSON.parse(localStorage.getItem('blockedDays')) || [];
 let selectedDay = null;
+let selectedHour = null;
 
 function showCreateOrLogin(){
     if(savedAccount){
@@ -137,27 +138,49 @@ function logout(){
 
 function toggleMode(){ document.body.classList.toggle('dark-mode'); }
 
+// --- Génération du calendrier avec pause de 30 min ---
 function generateCalendar(userEmail){
+    const calendar = document.getElementById('calendar');
+    calendar.innerHTML="";
     reservations.forEach((r,index)=>{
         if(r.annule && r.email === userEmail){
-            alert(`Votre réservation pour le jour ${r.jour} a été annulée par l'admin !`);
+            alert(`Votre réservation pour le jour ${r.jour} à ${r.heure} a été annulée par l'admin !`);
             reservations.splice(index,1);
             localStorage.setItem('reservations',JSON.stringify(reservations));
         }
     });
 
-    const calendar = document.getElementById('calendar');
-    calendar.innerHTML="";
-    for(let day=1;day<=30;day++){
+    for(let day=1; day<=30; day++){
         const div=document.createElement('div');
         div.textContent=day;
         div.className='day';
+        const dayReservations = reservations.filter(r=>r.jour===day).map(r=>r.heure);
         if(reservations.find(r=>r.jour===day) || blockedDays.includes(day)){
             div.classList.add('reserved');
         } else {
             div.addEventListener('click',()=>{
-                selectedDay=day;
-                document.getElementById('selectedDate').value=`Jour ${day}`;
+                let hour;
+                do{
+                    hour = prompt("Entrez l'heure souhaitée (HH:MM), de 09:00 à 16:00, pause 30 min entre cours :");
+                    if(hour === null) return; // annulation
+                    const [h,m] = hour.split(':').map(Number);
+                    if(h<9 || h>16 || m<0 || m>=60){ alert("Heure invalide !"); continue; }
+
+                    // Vérifier conflits et pause 30 min
+                    let conflict = false;
+                    for(let existingHour of dayReservations){
+                        const [eh,em] = existingHour.split(':').map(Number);
+                        const diff = Math.abs((eh*60+em)-(h*60+m));
+                        if(diff < 90){ conflict=true; break; } // 1h cours + 30min pause
+                    }
+                    if(conflict){ alert("Ce créneau est occupé ou il y a une pause de 30 min après une réservation."); continue; }
+
+                    break;
+                } while(true);
+
+                selectedDay = day;
+                selectedHour = hour;
+                document.getElementById('selectedDate').value = `Jour ${day} à ${hour}`;
                 document.querySelectorAll('.day').forEach(d=>d.style.border='1px solid #ccc');
                 div.style.border='2px solid #0077ff';
             });
@@ -167,23 +190,26 @@ function generateCalendar(userEmail){
     showCancelButton(userEmail);
 }
 
+// --- Formulaire réservation ---
 document.getElementById('resaForm').addEventListener('submit',function(e){
     e.preventDefault();
-    if(selectedDay===null){alert("Veuillez sélectionner un jour !");return;}
-    if(confirm("Voulez-vous réserver ce jour ?")){
+    if(selectedDay===null || selectedHour===null){alert("Veuillez sélectionner un jour et une heure !");return;}
+    if(confirm("Voulez-vous réserver ce créneau ?")){
         const nom=document.querySelector('input[name="Nom"]').value;
         const email=document.querySelector('input[name="Email"]').value;
         const message=document.querySelector('textarea[name="Message"]').value;
-        reservations.push({jour:selectedDay,nom,email,message,annule:false});
+        reservations.push({jour:selectedDay, heure:selectedHour, nom,email,message,annule:false});
         localStorage.setItem('reservations',JSON.stringify(reservations));
         alert("Réservation confirmée ! Pour contact : shadi.siteweb@gmail.com");
         generateCalendar(email);
         this.reset();
         document.getElementById('selectedDate').value='';
         selectedDay=null;
+        selectedHour=null;
     }
 });
 
+// --- Annulation ---
 function showCancelButton(userEmail){
     const myResa = reservations.find(r => r.email === userEmail && !r.annule);
     const btn = document.getElementById('cancelMyResaBtn');
@@ -198,7 +224,7 @@ function cancelMyReservation(){
     const email = document.querySelector('input[name="Email"]').value;
     const index = reservations.findIndex(r => r.email === email && !r.annule);
     if(index !== -1){
-        if(confirm(`Voulez-vous vraiment annuler votre réservation pour le jour ${reservations[index].jour} ?`)){
+        if(confirm(`Voulez-vous vraiment annuler votre réservation pour le jour ${reservations[index].jour} à ${reservations[index].heure} ?`)){
             reservations.splice(index,1);
             localStorage.setItem('reservations', JSON.stringify(reservations));
             alert("Votre réservation a été annulée !");
@@ -207,6 +233,7 @@ function cancelMyReservation(){
             document.getElementById('resaForm').reset();
             document.getElementById('selectedDate').value='';
             selectedDay = null;
+            selectedHour = null;
         }
     } else {
         alert("Vous n'avez pas de réservation active !");
