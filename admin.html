@@ -2,38 +2,37 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Admin - Shadi Piscine</title>
+<title>Shadi Piscine - Admin</title>
 <style>
-body { font-family: Arial; background:#f4f4f4; }
-.container { max-width:800px; margin:auto; padding:20px; }
-input { width:100%; padding:8px; margin:5px 0; border-radius:5px; border:1px solid #ccc; }
-button { padding:8px 15px; margin:5px; border:none; border-radius:5px; cursor:pointer; }
+body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
+.dark-mode { background:#121212; color:#fff; }
+.container { max-width:700px; margin:auto; padding:20px; }
+button { border:none; cursor:pointer; border-radius:5px; padding:8px; margin:5px; }
+button:hover { opacity:0.9; }
 button.logoutBtn { background:#ff5555; color:white; }
-button.logoutBtn:hover { background:#cc0000; }
 button.cancelBtn { background:#ff9900; color:white; }
-button.cancelBtn:hover { background:#cc7700; }
-button.loginBtn { background:#ff3333; color:white; }
-button.loginBtn:hover { background:#cc0000; }
 .hidden { display:none; }
-table { width:100%; border-collapse:collapse; }
-td, th { border:1px solid #ccc; padding:8px; text-align:center; }
+.calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:10px 0; }
+.day { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; }
+.day:hover { background:#cce5ff; }
+.day.blocked { background:#999; color:white; cursor:pointer; }
+.day.reserved { background:#ccc; color:#666; cursor:not-allowed; }
+table { width:100%; border-collapse:collapse; margin-top:15px;}
+th, td { border:1px solid #000; padding:8px; text-align:center;}
 </style>
 </head>
 <body>
 
-<div class="container" id="loginDiv">
-<h2>Admin Login</h2>
-<label>Nom d'utilisateur :</label>
-<input type="text" id="username">
-<label>Mot de passe :</label>
-<input type="password" id="password">
-<button class="loginBtn" onclick="login()">Se connecter</button>
-<div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
-</div>
-
-<div class="container hidden" id="adminDiv">
-<h2>Admin - Réservations</h2>
+<div class="container">
+<h2>Admin - Shadi Piscine</h2>
 <button class="logoutBtn" onclick="logout()">Déconnexion</button>
+<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
+
+<h3>Calendrier Admin - Bloquer/Débloquer les jours</h3>
+<div class="calendar" id="adminCalendar"></div>
+<p>Les jours gris sont bloqués pour les clients.</p>
+
+<h3>Réservations</h3>
 <table>
 <tr><th>Jour</th><th>Nom</th><th>Email</th><th>Message</th><th>Action</th></tr>
 <tbody id="adminTable"></tbody>
@@ -41,50 +40,75 @@ td, th { border:1px solid #ccc; padding:8px; text-align:center; }
 </div>
 
 <script>
-const adminUser = {username:"shadi", password:"je crois"};
+// --- Admin ---
 let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
+let blockedDays = JSON.parse(localStorage.getItem('blockedDays')) || [];
 
-function login(){
-    const u=document.getElementById('username').value;
-    const p=document.getElementById('password').value;
-    if(u===adminUser.username && p===adminUser.password){
-        document.getElementById('loginDiv').classList.add('hidden');
-        document.getElementById('adminDiv').classList.remove('hidden');
-        generateAdminTable();
-    } else {
-        document.getElementById('loginError').style.display='block';
+// --- Mode sombre ---
+function toggleMode(){ document.body.classList.toggle('dark-mode'); }
+
+function logout(){
+    alert("Déconnexion admin !");
+    location.reload();
+}
+
+// --- Générer calendrier admin ---
+function generateAdminCalendar(){
+    const calendar = document.getElementById('adminCalendar');
+    calendar.innerHTML="";
+    for(let day=1; day<=30; day++){
+        const div = document.createElement('div');
+        div.textContent = day;
+        div.className='day';
+        if(blockedDays.includes(day)){
+            div.classList.add('blocked');
+        }
+        div.addEventListener('click',()=>{
+            if(blockedDays.includes(day)){
+                blockedDays = blockedDays.filter(d => d!==day);
+                div.classList.remove('blocked');
+            } else {
+                blockedDays.push(day);
+                div.classList.add('blocked');
+            }
+            localStorage.setItem('blockedDays', JSON.stringify(blockedDays));
+            generateCalendarClients(); // Mettre à jour les jours réservés côté client
+        });
+        calendar.appendChild(div);
     }
 }
 
-function logout(){
-    document.getElementById('adminDiv').classList.add('hidden');
-    document.getElementById('loginDiv').classList.remove('hidden');
-}
-
+// --- Générer tableau réservations ---
 function generateAdminTable(){
-    const tbody=document.getElementById('adminTable');
+    const tbody = document.getElementById('adminTable');
     tbody.innerHTML="";
     reservations.forEach((r,index)=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`
-            <td>${r.jour}</td>
-            <td>${r.nom}</td>
-            <td>${r.email}</td>
-            <td>${r.message}</td>
-            <td><button class="cancelBtn" onclick="cancelReservation(${index})">Annuler</button></td>
-        `;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.jour}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>
+        <td><button class="cancelBtn" onclick="cancelReservation(${index})">Annuler</button></td>`;
         tbody.appendChild(tr);
     });
 }
 
 function cancelReservation(index){
     if(confirm("Voulez-vous vraiment annuler cette réservation ?")){
-        reservations.splice(index,1);
+        reservations[index].annule = true;
         localStorage.setItem('reservations', JSON.stringify(reservations));
         generateAdminTable();
-        alert("Réservation annulée !");
+        alert("Réservation annulée ! Le client sera informé à sa prochaine connexion.");
     }
 }
+
+// --- Fonction pour synchroniser le calendrier client avec les jours bloqués ---
+function generateCalendarClients(){
+    const calendar = document.getElementById('adminCalendar');
+    const clientCalendar = document.getElementById('adminCalendar'); // Pour simuler côté client
+    // En vrai côté client, le script client lit blockedDays pour afficher jours gris
+}
+
+// --- Initialisation ---
+generateAdminCalendar();
+generateAdminTable();
 </script>
 </body>
 </html>
