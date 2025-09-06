@@ -17,6 +17,10 @@ button:hover { background:#0055cc; }
 .day.reserved { background:#ccc; color:#666; cursor:not-allowed; }
 .attention { background:#ffdddd; border:1px solid #ff5c5c; padding:10px; border-radius:8px; font-weight:bold; color:#a80000; margin-bottom:15px; text-align:center; }
 .contact { margin-top:20px; padding:10px; background:#e0f7ff; border:1px solid #00aaff; border-radius:8px; }
+.logoutBtn { background:#ff5555; margin-top:10px; }
+.logoutBtn:hover { background:#cc0000; }
+.createBtn { background:#00aa55; margin-top:10px; }
+.createBtn:hover { background:#008833; }
 </style>
 </head>
 <body>
@@ -40,6 +44,7 @@ button:hover { background:#0055cc; }
 <label>Mot de passe :</label>
 <input type="password" id="password">
 <button onclick="login()">Se connecter</button>
+<button class="createBtn" onclick="showCreateDiv()">Créer un compte</button>
 <div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
 </div>
 
@@ -47,6 +52,7 @@ button:hover { background:#0055cc; }
 <div class="container hidden" id="resaDiv">
 <h2>Shadi Piscine - Réservation</h2>
 <button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
+<button class="logoutBtn" onclick="logout()">Déconnexion</button>
 
 <div class="attention">
 ⚠️ Attention, vérifiez bien vos informations avant d’envoyer !
@@ -90,6 +96,12 @@ function showCreateOrLogin(){
     }
 }
 
+// --- Afficher page création compte depuis login ---
+function showCreateDiv(){
+    document.getElementById('loginDiv').classList.add('hidden');
+    document.getElementById('createDiv').classList.remove('hidden');
+}
+
 // --- Créer un compte ---
 function createAccount(){
     const u = document.getElementById('newUsername').value.trim();
@@ -116,6 +128,12 @@ function login(){
     } else {
         document.getElementById('loginError').style.display = 'block';
     }
+}
+
+// --- Déconnexion ---
+function logout(){
+    document.getElementById('resaDiv').classList.add('hidden');
+    document.getElementById('loginDiv').classList.remove('hidden');
 }
 
 // --- Mode sombre ---
