@@ -2,23 +2,38 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Shadi Piscine - Réservation</title>
+<title>Shadi Piscine - Connexion</title>
 <style>
 body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
 .container { max-width:600px; margin:auto; padding:20px; }
-.attention { background:#ffdddd; border:1px solid #ff5c5c; padding:10px; border-radius:8px; font-weight:bold; color:#a80000; margin-bottom:15px; text-align:center; }
-input, textarea, button { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
+input, button, textarea { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
 button { background:#0077ff; color:white; border:none; cursor:pointer; }
 button:hover { background:#0055cc; }
+.hidden { display:none; }
 .calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:10px 0; }
 .day { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; }
 .day:hover { background:#cce5ff; }
 .day.reserved { background:#ccc; color:#666; cursor:not-allowed; }
+.attention { background:#ffdddd; border:1px solid #ff5c5c; padding:10px; border-radius:8px; font-weight:bold; color:#a80000; margin-bottom:15px; text-align:center; }
+.contact { margin-top:20px; padding:10px; background:#e0f7ff; border:1px solid #00aaff; border-radius:8px; }
 </style>
 </head>
 <body>
-<div class="container">
+
+<!-- Page de connexion -->
+<div class="container" id="loginDiv">
+<h2>Connexion - Shadi Piscine</h2>
+<label>Nom d'utilisateur :</label>
+<input type="text" id="username">
+<label>Mot de passe :</label>
+<input type="password" id="password">
+<button onclick="login()">Se connecter</button>
+<div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
+</div>
+
+<!-- Page de réservation -->
+<div class="container hidden" id="resaDiv">
 <h2>Shadi Piscine - Réservation</h2>
 <button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
 
@@ -44,24 +59,48 @@ button:hover { background:#0055cc; }
 
 <button type="submit">Envoyer la réservation</button>
 </form>
+
+<div class="contact">
+Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com</strong>
+</div>
 </div>
 
 <script>
-// Jours déjà réservés
-const reservedDays = [5,10,18];
+// --- Connexion ---
+const correctUsername = "shadi";
+const correctPassword = "piscine";
+
+function login(){
+    const u = document.getElementById('username').value;
+    const p = document.getElementById('password').value;
+    if(u === correctUsername && p === correctPassword){
+        document.getElementById('loginDiv').classList.add('hidden');
+        document.getElementById('resaDiv').classList.remove('hidden');
+        generateCalendar();
+    } else {
+        document.getElementById('loginError').style.display = 'block';
+    }
+}
+
+// --- Mode sombre ---
+function toggleMode(){ document.body.classList.toggle('dark-mode'); }
+
+// --- Calendrier avec localStorage ---
+let reservedDays = JSON.parse(localStorage.getItem('reservedDays')) || [5,10,18]; 
+let selectedDay = null;
 const calendar = document.getElementById('calendar');
 
-// Génération du calendrier
 function generateCalendar(){
     calendar.innerHTML="";
     for(let day=1; day<=30; day++){
         const div = document.createElement('div');
         div.textContent = day;
-        div.className = 'day';
+        div.className='day';
         if(reservedDays.includes(day)){
             div.classList.add('reserved');
         } else {
             div.addEventListener('click', ()=>{
+                selectedDay = day;
                 document.getElementById('selectedDate').value = `Jour ${day}`;
                 document.querySelectorAll('.day').forEach(d=>d.style.border='1px solid #ccc');
                 div.style.border='2px solid #0077ff';
@@ -71,21 +110,21 @@ function generateCalendar(){
     }
 }
 
-generateCalendar();
-
-// Mode sombre/blanc
-function toggleMode(){
-    document.body.classList.toggle('dark-mode');
-}
-
-// Pop-up de confirmation avant envoi
+// --- Formulaire avec pop-up et sauvegarde locale ---
 document.getElementById('resaForm').addEventListener('submit', function(e){
     e.preventDefault();
+    if(selectedDay === null){
+        alert("Veuillez sélectionner un jour sur le calendrier !");
+        return;
+    }
     if(confirm("Confirmez-vous votre réservation ?")){
-        alert("Réservation envoyée !");
-        // Ici tu peux ajouter un envoi email réel (EmailJS ou Formspree)
+        alert("Réservation confirmée ! Pour contacter, veuillez envoyer un email à shadi.siteweb@gmail.com");
+        reservedDays.push(selectedDay);
+        localStorage.setItem('reservedDays', JSON.stringify(reservedDays));
+        generateCalendar();
         this.reset();
-        document.getElementById('selectedDate').value = '';
+        document.getElementById('selectedDate').value='';
+        selectedDay=null;
     }
 });
 </script>
