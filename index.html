@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Shadi Piscine - Compte & Réservation</title>
+<title>Shadi Piscine - Réservation & Admin</title>
 <style>
 body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
 .container { max-width:600px; margin:auto; padding:20px; }
-input, button, textarea { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
+input, button, textarea, select { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
 button { background:#0077ff; color:white; border:none; cursor:pointer; }
 button:hover { background:#0055cc; }
 .hidden { display:none; }
@@ -25,19 +25,8 @@ button:hover { background:#0055cc; }
 </head>
 <body>
 
-<!-- Page de création de compte -->
-<div class="container" id="createDiv">
-<h2>Créer un compte - Shadi Piscine</h2>
-<label>Nom d'utilisateur :</label>
-<input type="text" id="newUsername">
-<label>Mot de passe :</label>
-<input type="password" id="newPassword">
-<button onclick="createAccount()">Créer le compte</button>
-<div id="createError" style="color:red; display:none; margin-top:10px;"></div>
-</div>
-
-<!-- Page de connexion -->
-<div class="container hidden" id="loginDiv">
+<!-- Connexion utilisateur/admin -->
+<div class="container" id="loginDiv">
 <h2>Connexion - Shadi Piscine</h2>
 <label>Nom d'utilisateur :</label>
 <input type="text" id="username">
@@ -48,7 +37,18 @@ button:hover { background:#0055cc; }
 <div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
 </div>
 
-<!-- Page de réservation -->
+<!-- Création compte -->
+<div class="container hidden" id="createDiv">
+<h2>Créer un compte - Shadi Piscine</h2>
+<label>Nom d'utilisateur :</label>
+<input type="text" id="newUsername">
+<label>Mot de passe :</label>
+<input type="password" id="newPassword">
+<button onclick="createAccount()">Créer le compte</button>
+<div id="createError" style="color:red; display:none; margin-top:10px;"></div>
+</div>
+
+<!-- Page utilisateur -->
 <div class="container hidden" id="resaDiv">
 <h2>Shadi Piscine - Réservation</h2>
 <button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
@@ -74,7 +74,7 @@ button:hover { background:#0055cc; }
 <label>Message :</label>
 <textarea name="Message" rows="4"></textarea>
 
-<button type="submit">Envoyer la réservation</button>
+<button type="submit">Réserver</button>
 </form>
 
 <div class="contact">
@@ -82,9 +82,23 @@ Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com<
 </div>
 </div>
 
+<!-- Page admin -->
+<div class="container hidden" id="adminDiv">
+<h2>Admin - Réservations</h2>
+<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
+<button class="logoutBtn" onclick="logout()">Déconnexion</button>
+
+<h3>Réservations</h3>
+<table border="1" width="100%" style="border-collapse:collapse;">
+<tr><th>Jour</th><th>Nom</th><th>Email</th><th>Message</th></tr>
+<tbody id="adminTable"></tbody>
+</table>
+</div>
+
 <script>
-// --- Gestion du compte ---
+// --- Comptes ---
 let savedAccount = JSON.parse(localStorage.getItem('account'));
+const adminUser = {username:"admin", password:"admin"}; // admin par défaut
 
 function showCreateOrLogin(){
     if(savedAccount){
@@ -96,66 +110,66 @@ function showCreateOrLogin(){
     }
 }
 
-// --- Afficher page création compte depuis login ---
 function showCreateDiv(){
     document.getElementById('loginDiv').classList.add('hidden');
     document.getElementById('createDiv').classList.remove('hidden');
 }
 
-// --- Créer un compte ---
 function createAccount(){
     const u = document.getElementById('newUsername').value.trim();
     const p = document.getElementById('newPassword').value.trim();
-    if(u === "" || p === ""){
-        document.getElementById('createError').textContent = "Veuillez remplir tous les champs";
-        document.getElementById('createError').style.display = "block";
-        return;
-    }
-    savedAccount = {username: u, password: p};
+    if(u===""||p===""){document.getElementById('createError').textContent="Veuillez remplir tous les champs";document.getElementById('createError').style.display="block";return;}
+    savedAccount = {username:u,password:p};
     localStorage.setItem('account', JSON.stringify(savedAccount));
-    alert("Compte créé avec succès !");
+    alert("Compte créé !");
     showCreateOrLogin();
 }
 
 // --- Connexion ---
 function login(){
-    const u = document.getElementById('username').value;
-    const p = document.getElementById('password').value;
-    if(savedAccount && u === savedAccount.username && p === savedAccount.password){
+    const u=document.getElementById('username').value;
+    const p=document.getElementById('password').value;
+    if(u===adminUser.username && p===adminUser.password){
+        document.getElementById('loginDiv').classList.add('hidden');
+        document.getElementById('adminDiv').classList.remove('hidden');
+        generateAdminTable();
+    } else if(savedAccount && u===savedAccount.username && p===savedAccount.password){
         document.getElementById('loginDiv').classList.add('hidden');
         document.getElementById('resaDiv').classList.remove('hidden');
         generateCalendar();
     } else {
-        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('loginError').style.display='block';
     }
 }
 
 // --- Déconnexion ---
 function logout(){
     document.getElementById('resaDiv').classList.add('hidden');
+    document.getElementById('adminDiv').classList.add('hidden');
     document.getElementById('loginDiv').classList.remove('hidden');
 }
 
 // --- Mode sombre ---
 function toggleMode(){ document.body.classList.toggle('dark-mode'); }
 
-// --- Calendrier avec localStorage ---
-let reservedDays = JSON.parse(localStorage.getItem('reservedDays')) || [5,10,18]; 
+// --- Réservations stockées ---
+let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
 let selectedDay = null;
 const calendar = document.getElementById('calendar');
 
+// --- Calendrier utilisateur ---
 function generateCalendar(){
     calendar.innerHTML="";
-    for(let day=1; day<=30; day++){
-        const div = document.createElement('div');
+    for(let day=1;day<=30;day++){
+        const div=document.createElement('div');
         div.textContent=day;
         div.className='day';
-        if(reservedDays.includes(day)){
+        if(reservations.find(r=>r.jour===day)){
             div.classList.add('reserved');
         } else {
-            div.addEventListener('click', ()=>{
-                selectedDay = day;
-                document.getElementById('selectedDate').value = `Jour ${day}`;
+            div.addEventListener('click',()=>{
+                selectedDay=day;
+                document.getElementById('selectedDate').value=`Jour ${day}`;
                 document.querySelectorAll('.day').forEach(d=>d.style.border='1px solid #ccc');
                 div.style.border='2px solid #0077ff';
             });
@@ -164,23 +178,34 @@ function generateCalendar(){
     }
 }
 
-// --- Formulaire avec pop-up et sauvegarde locale ---
-document.getElementById('resaForm').addEventListener('submit', function(e){
+// --- Formulaire réservation ---
+document.getElementById('resaForm').addEventListener('submit',function(e){
     e.preventDefault();
-    if(selectedDay === null){
-        alert("Veuillez sélectionner un jour sur le calendrier !");
-        return;
-    }
-    if(confirm("Confirmez-vous votre réservation ?")){
-        alert("Réservation confirmée ! Pour contacter, veuillez envoyer un email à shadi.siteweb@gmail.com");
-        reservedDays.push(selectedDay);
-        localStorage.setItem('reservedDays', JSON.stringify(reservedDays));
+    if(selectedDay===null){alert("Veuillez sélectionner un jour !");return;}
+    if(confirm("Voulez-vous réserver ce jour ?")){
+        const nom=document.querySelector('input[name="Nom"]').value;
+        const email=document.querySelector('input[name="Email"]').value;
+        const message=document.querySelector('textarea[name="Message"]').value;
+        reservations.push({jour:selectedDay,nom,email,message});
+        localStorage.setItem('reservations',JSON.stringify(reservations));
+        alert("Réservation confirmée ! Pour contact : shadi.siteweb@gmail.com");
         generateCalendar();
         this.reset();
         document.getElementById('selectedDate').value='';
         selectedDay=null;
     }
 });
+
+// --- Admin ---
+function generateAdminTable(){
+    const tbody=document.getElementById('adminTable');
+    tbody.innerHTML="";
+    reservations.forEach(r=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.jour}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>`;
+        tbody.appendChild(tr);
+    });
+}
 
 // --- Initialisation ---
 showCreateOrLogin();
