@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Shadi Piscine - Connexion</title>
+<title>Shadi Piscine - Compte & Réservation</title>
 <style>
 body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
@@ -21,8 +21,19 @@ button:hover { background:#0055cc; }
 </head>
 <body>
 
+<!-- Page de création de compte -->
+<div class="container" id="createDiv">
+<h2>Créer un compte - Shadi Piscine</h2>
+<label>Nom d'utilisateur :</label>
+<input type="text" id="newUsername">
+<label>Mot de passe :</label>
+<input type="password" id="newPassword">
+<button onclick="createAccount()">Créer le compte</button>
+<div id="createError" style="color:red; display:none; margin-top:10px;"></div>
+</div>
+
 <!-- Page de connexion -->
-<div class="container" id="loginDiv">
+<div class="container hidden" id="loginDiv">
 <h2>Connexion - Shadi Piscine</h2>
 <label>Nom d'utilisateur :</label>
 <input type="text" id="username">
@@ -66,14 +77,39 @@ Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com<
 </div>
 
 <script>
-// --- Connexion ---
-const correctUsername = "shadi";
-const correctPassword = "piscine";
+// --- Gestion du compte ---
+let savedAccount = JSON.parse(localStorage.getItem('account'));
 
+function showCreateOrLogin(){
+    if(savedAccount){
+        document.getElementById('createDiv').classList.add('hidden');
+        document.getElementById('loginDiv').classList.remove('hidden');
+    } else {
+        document.getElementById('createDiv').classList.remove('hidden');
+        document.getElementById('loginDiv').classList.add('hidden');
+    }
+}
+
+// --- Créer un compte ---
+function createAccount(){
+    const u = document.getElementById('newUsername').value.trim();
+    const p = document.getElementById('newPassword').value.trim();
+    if(u === "" || p === ""){
+        document.getElementById('createError').textContent = "Veuillez remplir tous les champs";
+        document.getElementById('createError').style.display = "block";
+        return;
+    }
+    savedAccount = {username: u, password: p};
+    localStorage.setItem('account', JSON.stringify(savedAccount));
+    alert("Compte créé avec succès !");
+    showCreateOrLogin();
+}
+
+// --- Connexion ---
 function login(){
     const u = document.getElementById('username').value;
     const p = document.getElementById('password').value;
-    if(u === correctUsername && p === correctPassword){
+    if(savedAccount && u === savedAccount.username && p === savedAccount.password){
         document.getElementById('loginDiv').classList.add('hidden');
         document.getElementById('resaDiv').classList.remove('hidden');
         generateCalendar();
@@ -94,7 +130,7 @@ function generateCalendar(){
     calendar.innerHTML="";
     for(let day=1; day<=30; day++){
         const div = document.createElement('div');
-        div.textContent = day;
+        div.textContent=day;
         div.className='day';
         if(reservedDays.includes(day)){
             div.classList.add('reserved');
@@ -127,6 +163,9 @@ document.getElementById('resaForm').addEventListener('submit', function(e){
         selectedDay=null;
     }
 });
+
+// --- Initialisation ---
+showCreateOrLogin();
 </script>
 </body>
 </html>
