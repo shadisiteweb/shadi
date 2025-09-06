@@ -83,23 +83,13 @@ Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com<
 </div>
 </div>
 
-<!-- Page admin -->
-<div class="container hidden" id="adminDiv">
-<h2>Admin - Réservations</h2>
-<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
-<button class="logoutBtn" onclick="logout()">Déconnexion</button>
-
-<h3>Réservations</h3>
-<table border="1" width="100%" style="border-collapse:collapse;">
-<tr><th>Jour</th><th>Nom</th><th>Email</th><th>Message</th><th>Action</th></tr>
-<tbody id="adminTable"></tbody>
-</table>
-</div>
-
 <script>
 // --- Comptes ---
 let savedAccount = JSON.parse(localStorage.getItem('account'));
-const adminUser = {username:"admin", password:"admin"}; // admin par défaut
+const adminUser = {username:"admin", password:"admin"};
+let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
+let blockedDays = JSON.parse(localStorage.getItem('blockedDays')) || [];
+let selectedDay = null;
 
 function showCreateOrLogin(){
     if(savedAccount){
@@ -126,41 +116,28 @@ function createAccount(){
     showCreateOrLogin();
 }
 
-// --- Connexion ---
 function login(){
     const u=document.getElementById('username').value;
     const p=document.getElementById('password').value;
     if(u===adminUser.username && p===adminUser.password){
-        document.getElementById('loginDiv').classList.add('hidden');
-        document.getElementById('adminDiv').classList.remove('hidden');
-        generateAdminTable();
+        alert("Connecté comme admin !");
     } else if(savedAccount && u===savedAccount.username && p===savedAccount.password){
         document.getElementById('loginDiv').classList.add('hidden');
         document.getElementById('resaDiv').classList.remove('hidden');
-        generateCalendar(u); // on passe l'utilisateur connecté
+        generateCalendar(u);
     } else {
         document.getElementById('loginError').style.display='block';
     }
 }
 
-// --- Déconnexion ---
 function logout(){
     document.getElementById('resaDiv').classList.add('hidden');
-    document.getElementById('adminDiv').classList.add('hidden');
     document.getElementById('loginDiv').classList.remove('hidden');
 }
 
-// --- Mode sombre ---
 function toggleMode(){ document.body.classList.toggle('dark-mode'); }
 
-// --- Réservations stockées ---
-let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
-let selectedDay = null;
-const calendar = document.getElementById('calendar');
-
-// --- Calendrier utilisateur ---
 function generateCalendar(userEmail){
-    // Vérifie les annulations pour cet utilisateur
     reservations.forEach((r,index)=>{
         if(r.annule && r.email === userEmail){
             alert(`Votre réservation pour le jour ${r.jour} a été annulée par l'admin !`);
@@ -169,12 +146,13 @@ function generateCalendar(userEmail){
         }
     });
 
+    const calendar = document.getElementById('calendar');
     calendar.innerHTML="";
     for(let day=1;day<=30;day++){
         const div=document.createElement('div');
         div.textContent=day;
         div.className='day';
-        if(reservations.find(r=>r.jour===day)){
+        if(reservations.find(r=>r.jour===day) || blockedDays.includes(day)){
             div.classList.add('reserved');
         } else {
             div.addEventListener('click',()=>{
@@ -189,7 +167,6 @@ function generateCalendar(userEmail){
     showCancelButton(userEmail);
 }
 
-// --- Formulaire réservation ---
 document.getElementById('resaForm').addEventListener('submit',function(e){
     e.preventDefault();
     if(selectedDay===null){alert("Veuillez sélectionner un jour !");return;}
@@ -207,7 +184,6 @@ document.getElementById('resaForm').addEventListener('submit',function(e){
     }
 });
 
-// --- Bouton annuler côté client ---
 function showCancelButton(userEmail){
     const myResa = reservations.find(r => r.email === userEmail && !r.annule);
     const btn = document.getElementById('cancelMyResaBtn');
@@ -237,27 +213,6 @@ function cancelMyReservation(){
     }
 }
 
-// --- Admin ---
-function generateAdminTable(){
-    const tbody=document.getElementById('adminTable');
-    tbody.innerHTML="";
-    reservations.forEach((r,index)=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${r.jour}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td><td><button onclick="cancelReservation(${index})" class="cancelBtn">Annuler</button></td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-function cancelReservation(index){
-    if(confirm("Voulez-vous vraiment annuler cette réservation ?")){
-        reservations[index].annule = true;
-        localStorage.setItem('reservations',JSON.stringify(reservations));
-        generateAdminTable();
-        alert("Réservation annulée ! Le client sera informé à sa prochaine connexion.");
-    }
-}
-
-// --- Initialisation ---
 showCreateOrLogin();
 </script>
 </body>
