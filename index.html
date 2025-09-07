@@ -6,27 +6,28 @@
 <style>
 body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
-.container { max-width:600px; margin:auto; padding:20px; }
+.container { max-width:600px; margin:auto; padding:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
 input, button, textarea, select { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
 button { background:#0077ff; color:white; border:none; cursor:pointer; border-radius:6px; }
 button:hover { background:#0055cc; }
 .hidden { display:none; }
 .calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:10px 0; }
-.day, .slot { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; }
+.day, .slot { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
 .day:hover, .slot:hover { background:#cce5ff; }
-.day.reserved, .slot.reserved { background:#ccc; color:#666; cursor:not-allowed; }
 .day.selected, .slot.selected { border:2px solid #0077ff; }
+.day.reserved, .slot.reserved { background:#ccc; color:#666; cursor:not-allowed; }
 .attention { background:#ffdddd; border:1px solid #ff5c5c; padding:10px; border-radius:8px; font-weight:bold; color:#a80000; margin-bottom:15px; text-align:center; }
 .contact { margin-top:20px; padding:10px; background:#e0f7ff; border:1px solid #00aaff; border-radius:8px; }
 .logoutBtn { background:#ff5555; margin-top:10px; }
 .logoutBtn:hover { background:#cc0000; }
 .createBtn { background:#00aa55; margin-top:10px; }
 .createBtn:hover { background:#008833; }
+.announcements { background:#fff4cc; padding:10px; border:1px solid #ffcc33; border-radius:8px; margin-top:15px; }
 </style>
 </head>
 <body>
 
-<!-- Connexion utilisateur/admin -->
+<!-- Connexion utilisateur -->
 <div class="container" id="loginDiv">
 <h2>Connexion - Shadi Piscine</h2>
 <label>Nom d'utilisateur :</label>
@@ -49,7 +50,7 @@ button:hover { background:#0055cc; }
 <div id="createError" style="color:red; display:none; margin-top:10px;"></div>
 </div>
 
-<!-- Page utilisateur -->
+<!-- Page client -->
 <div class="container hidden" id="resaDiv">
 <h2>Shadi Piscine - Réservation</h2>
 <button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
@@ -64,7 +65,7 @@ button:hover { background:#0055cc; }
 
 <!-- Grille horaires -->
 <div id="timeSlots" class="hidden">
-  <h3>Choisissez un horaire</h3>
+  <h3>Choisissez un créneau</h3>
   <div class="calendar" id="timeGrid"></div>
 </div>
 
@@ -88,41 +89,20 @@ button:hover { background:#0055cc; }
 <div class="contact">
 Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com</strong>
 </div>
+
+<div class="announcements">
+<h3>Messages d'annonce</h3>
+<ul id="clientAnnouncements"></ul>
 </div>
-
-<!-- Page admin -->
-<div class="container hidden" id="adminDiv">
-<h2>Admin - Réservations</h2>
-<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
-<button class="logoutBtn" onclick="logout()">Déconnexion</button>
-
-<h3>Réservations</h3>
-<table border="1" width="100%" style="border-collapse:collapse;">
-<tr><th>Jour</th><th>Heure</th><th>Nom</th><th>Email</th><th>Message</th></tr>
-<tbody id="adminTable"></tbody>
-</table>
 </div>
 
 <script>
 // --- Comptes ---
 let savedAccount = JSON.parse(localStorage.getItem('account'));
-const adminUser = {username:"admin", password:"admin"};
-
-function showCreateOrLogin(){
-    if(savedAccount){
-        document.getElementById('createDiv').classList.add('hidden');
-        document.getElementById('loginDiv').classList.remove('hidden');
-    } else {
-        document.getElementById('createDiv').classList.remove('hidden');
-        document.getElementById('loginDiv').classList.add('hidden');
-    }
-}
-
-function showCreateDiv(){
-    document.getElementById('loginDiv').classList.add('hidden');
-    document.getElementById('createDiv').classList.remove('hidden');
-}
-
+function showCreateOrLogin(){ savedAccount ? loginDivShow() : createDivShow(); }
+function loginDivShow(){ document.getElementById('createDiv').classList.add('hidden'); document.getElementById('loginDiv').classList.remove('hidden'); }
+function createDivShow(){ document.getElementById('createDiv').classList.remove('hidden'); document.getElementById('loginDiv').classList.add('hidden'); }
+function showCreateDiv(){ createDivShow(); }
 function createAccount(){
     const u = document.getElementById('newUsername').value.trim();
     const p = document.getElementById('newPassword').value.trim();
@@ -134,45 +114,32 @@ function createAccount(){
 }
 
 // --- Connexion ---
+const adminUser = {username:"admin", password:"admin"};
 function login(){
-    const u=document.getElementById('username').value;
-    const p=document.getElementById('password').value;
-    if(u===adminUser.username && p===adminUser.password){
-        document.getElementById('loginDiv').classList.add('hidden');
-        document.getElementById('adminDiv').classList.remove('hidden');
-        generateAdminTable();
-    } else if(savedAccount && u===savedAccount.username && p===savedAccount.password){
+    const u=document.getElementById('username').value.trim();
+    const p=document.getElementById('password').value.trim();
+    if(u===adminUser.username && p===adminUser.password){ alert("Connecté comme admin. Utilisez admin.html."); }
+    else if(savedAccount && u===savedAccount.username && p===savedAccount.password){
         document.getElementById('loginDiv').classList.add('hidden');
         document.getElementById('resaDiv').classList.remove('hidden');
         generateCalendar();
-    } else {
-        document.getElementById('loginError').style.display='block';
-    }
+        displayClientAnnouncements();
+    } else { document.getElementById('loginError').style.display='block'; }
 }
-
-// --- Déconnexion ---
-function logout(){
-    document.getElementById('resaDiv').classList.add('hidden');
-    document.getElementById('adminDiv').classList.add('hidden');
-    document.getElementById('loginDiv').classList.remove('hidden');
-}
-
-// --- Mode sombre ---
+function logout(){ window.location.reload(); }
 function toggleMode(){ document.body.classList.toggle('dark-mode'); }
 
-// --- Réservations stockées ---
+// --- Réservations et calendrier ---
 let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
-let selectedDay = null;
-let selectedHour = null;
+let announcements = JSON.parse(localStorage.getItem('announcements')) || [];
+let selectedDay=null; let selectedHour=null;
+
 const calendar = document.getElementById('calendar');
 
-// --- Calendrier utilisateur ---
 function generateCalendar(){
     calendar.innerHTML="";
     for(let day=1;day<=30;day++){
-        const div=document.createElement('div');
-        div.textContent=day;
-        div.className='day';
+        const div=document.createElement('div'); div.textContent=day; div.className='day';
         div.addEventListener('click',()=>{
             selectedDay=day;
             showTimeSlots(day);
@@ -183,112 +150,61 @@ function generateCalendar(){
     }
 }
 
-// --- Grille horaires ---
 function showTimeSlots(day, clientName = null){
-  const container=document.getElementById('timeSlots');
-  const grid=document.getElementById('timeGrid');
-  container.classList.remove('hidden');
-  grid.innerHTML="";
-
-  const slots=["09:00","10:30","12:00","13:30","15:00"];
-
-  slots.forEach(hour=>{
-    const div=document.createElement('div');
-    div.textContent=hour;
-    div.className="slot";
-
-    const reserved = reservations.find(r=>r.jour===day && r.heure===hour);
-    
-    if(reserved){
-        if(clientName && reserved.nom===clientName){
-            div.classList.remove("reserved"); // client peut annuler
-        } else {
-            div.classList.add("reserved"); // gris pour les autres
-        }
-    } else {
-        if(!clientName){ // normal pour la réservation
-            div.addEventListener("click",()=>{
-                document.querySelectorAll(".slot").forEach(s=>s.classList.remove("selected"));
-                div.classList.add("selected");
-                selectedHour=hour;
-                document.getElementById("selectedDate").value=`Jour ${day} - ${hour}`;
-            });
-        }
-    }
-
-    grid.appendChild(div);
-  });
+    const container=document.getElementById('timeSlots'); const grid=document.getElementById('timeGrid');
+    container.classList.remove('hidden'); grid.innerHTML="";
+    const slots=["09:00","10:30","12:00","13:30","15:00"];
+    const nomClient=document.querySelector('input[name="Nom"]').value.trim();
+    slots.forEach(hour=>{
+        const div=document.createElement('div'); div.textContent=hour; div.className='slot';
+        const reserved = reservations.find(r=>r.jour===day && r.heure===hour);
+        if(reserved){
+            if(reserved.nom===nomClient){ div.classList.remove("reserved"); div.addEventListener('click',()=>{selectedHour=hour; document.getElementById("selectedDate").value=`Jour ${day} - ${hour}`;}); }
+            else { div.classList.add("reserved"); }
+        } else { div.addEventListener('click',()=>{selectedHour=hour; document.querySelectorAll(".slot").forEach(s=>s.classList.remove("selected")); div.classList.add("selected"); document.getElementById("selectedDate").value=`Jour ${day} - ${hour}`; }); }
+        grid.appendChild(div);
+    });
 }
 
-// --- Formulaire réservation ---
+// --- Formulaire ---
 document.getElementById('resaForm').addEventListener('submit',function(e){
     e.preventDefault();
-    if(selectedDay===null || selectedHour===null){alert("Veuillez sélectionner un jour et une heure !");return;}
-    if(confirm("Voulez-vous réserver ce créneau ?")){
+    if(selectedDay===null || selectedHour===null){ alert("Sélectionnez un jour et un créneau."); return; }
+    if(confirm("Confirmer la réservation ?")){
         const nom=document.querySelector('input[name="Nom"]').value;
         const email=document.querySelector('input[name="Email"]').value;
         const message=document.querySelector('textarea[name="Message"]').value;
         reservations.push({jour:selectedDay,heure:selectedHour,nom,email,message});
         localStorage.setItem('reservations',JSON.stringify(reservations));
-        alert("Réservation confirmée ! Pour contact : shadi.siteweb@gmail.com");
-        generateCalendar();
-        showTimeSlots(selectedDay);
-        this.reset();
-        document.getElementById('selectedDate').value='';
-        selectedDay=null;
-        selectedHour=null;
+        alert("Réservation confirmée !");
+        generateCalendar(); showTimeSlots(selectedDay); selectedDay=null; selectedHour=null; this.reset();
+        displayClientAnnouncements();
     }
 });
 
 // --- Annuler réservation ---
 function cancelReservation(){
-    const clientName = document.querySelector('input[name="Nom"]').value.trim();
-    if(!clientName){
-        alert("Veuillez entrer votre nom pour afficher vos réservations.");
-        return;
-    }
-    if(selectedDay===null){
-        alert("Veuillez sélectionner un jour pour voir vos réservations.");
-        return;
-    }
-
-    // Affiche uniquement les créneaux du client
-    showTimeSlots(selectedDay, clientName);
-
-    if(selectedHour===null){
-        alert("Cliquez sur le créneau que vous voulez annuler.");
-        return;
-    }
-
-    if(confirm("Voulez-vous vraiment annuler cette réservation ?")){
-        const index = reservations.findIndex(r=>r.jour===selectedDay && r.heure===selectedHour && r.nom===clientName);
-        if(index!==-1){
-            reservations.splice(index,1);
-            localStorage.setItem('reservations', JSON.stringify(reservations));
-            alert("Réservation annulée !");
-        }
+    const nom=document.querySelector('input[name="Nom"]').value.trim();
+    if(!nom){ alert("Entrez votre nom."); return; }
+    const filtered = reservations.filter(r=>r.nom===nom);
+    if(filtered.length===0){ alert("Vous n'avez pas de réservations."); return; }
+    const confirmCancel=confirm("Voulez-vous annuler votre réservation ?");
+    if(confirmCancel){
+        reservations=reservations.filter(r=>r.nom!==nom);
+        localStorage.setItem('reservations',JSON.stringify(reservations));
+        alert("Réservations annulées !");
         generateCalendar();
-        showTimeSlots(selectedDay);
-        selectedDay=null;
-        selectedHour=null;
-        document.getElementById('resaForm').reset();
-        document.getElementById('selectedDate').value='';
-        document.getElementById('timeSlots').classList.add('hidden');
     }
 }
 
-// --- Admin ---
-function generateAdminTable(){
-    const tbody=document.getElementById('adminTable');
-    tbody.innerHTML="";
-    reservations.forEach(r=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${r.jour}</td><td>${r.heure}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>`;
-        tbody.appendChild(tr);
-    });
+// --- Annonces ---
+function displayClientAnnouncements(){
+    const ul = document.getElementById('clientAnnouncements');
+    ul.innerHTML="";
+    const announcements = JSON.parse(localStorage.getItem('announcements')) || [];
+    announcements.forEach(a=>{ const li=document.createElement('li'); li.textContent=a; ul.appendChild(li); });
 }
 
-// --- Initialisation ---
 showCreateOrLogin();
 </script>
 </body>
