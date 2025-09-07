@@ -2,55 +2,55 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Shadi Piscine - Admin</title>
+<title>Admin - Shadi Piscine</title>
 <style>
 body { font-family: Arial; background:#f4f4f4; color:#000; transition:0.3s; }
 .dark-mode { background:#121212; color:#fff; }
-.container { max-width:800px; margin:auto; padding:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
-button { padding:10px 20px; border:none; border-radius:8px; cursor:pointer; margin:5px 0; }
-button:hover { opacity:0.85; }
-.logoutBtn { background:#ff5555; color:white; }
+.container { max-width:800px; margin:auto; padding:20px; }
+input, button, textarea { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
+button { cursor:pointer; background:#0077ff; color:white; border:none; }
+button:hover { background:#0055cc; }
+.logoutBtn { background:#ff5555; margin-top:10px; }
 .logoutBtn:hover { background:#cc0000; }
-.blockBtn { background:#0077ff; color:white; }
-.blockBtn:hover { background:#0055cc; }
-.calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:15px 0; }
-.day, .slot { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
-.day:hover, .slot:hover { background:#cce5ff; }
-.day.selected, .slot.selected { border:2px solid #0077ff; }
-.day.reserved, .slot.reserved { background:#ccc; color:#666; cursor:not-allowed; }
-table { width:100%; border-collapse:collapse; margin-top:15px; }
-th, td { padding:10px; text-align:center; border:1px solid #ccc; border-radius:6px; }
-th { background:#0077ff; color:white; }
-tr:nth-child(even) { background:#f0f8ff; }
-textarea { width:100%; border-radius:8px; padding:8px; margin:6px 0; }
+.hidden { display:none; }
+table { border-collapse:collapse; width:100%; margin-top:10px; }
+th,td { border:1px solid #ccc; padding:8px; text-align:left; }
 </style>
 </head>
 <body>
 
-<!-- Connexion Admin -->
 <div class="container" id="loginDiv">
-<h2>Connexion Admin - Shadi Piscine</h2>
+<h2>Connexion Admin</h2>
 <label>Nom d'utilisateur :</label>
-<input type="text" id="username">
+<input type="text" id="adminUser">
 <label>Mot de passe :</label>
-<input type="password" id="password">
-<button style="background:red;" onclick="login()">Se connecter</button>
+<input type="password" id="adminPass">
+<button style="background:red;" onclick="loginAdmin()">Se connecter</button>
 <div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
 </div>
 
-<!-- Admin Dashboard -->
 <div class="container hidden" id="adminDiv">
 <h2>Admin - Shadi Piscine</h2>
-<button onclick="toggleMode()" class="blockBtn">🌙/☀️ Mode sombre/blanc</button>
+<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
 <button class="logoutBtn" onclick="logout()">Déconnexion</button>
 
-<h3>Calendrier (Cliquez sur un jour pour gérer les créneaux)</h3>
-<div class="calendar" id="calendar"></div>
+<hr>
 
-<div id="timeSlots" class="hidden">
-  <h3>Créneaux horaires</h3>
-  <div class="calendar" id="timeGrid"></div>
-</div>
+<h3>Personnaliser le Splash</h3>
+<label>Texte du Splash :</label>
+<input type="text" id="splashText">
+<label>Couleur du Splash :</label>
+<input type="color" id="splashColor" value="#0077ff">
+<button onclick="updateSplash()">Mettre à jour le Splash</button>
+
+<hr>
+
+<h3>Message de bienvenue</h3>
+<label>Message pour les clients :</label>
+<input type="text" id="welcomeMessage">
+<button onclick="updateWelcomeMessage()">Mettre à jour le message</button>
+
+<hr>
 
 <h3>Réservations</h3>
 <table>
@@ -58,123 +58,114 @@ textarea { width:100%; border-radius:8px; padding:8px; margin:6px 0; }
 <tbody id="adminTable"></tbody>
 </table>
 
-<h3>Messages d'annonce</h3>
-<textarea id="announcementText" rows="3" placeholder="Écrire un message..."></textarea>
-<button class="blockBtn" onclick="publishAnnouncement()">Publier</button>
-<h4>Messages actuels :</h4>
+<hr>
+
+<h3>Annonces / Messages</h3>
+<textarea id="announcementText" rows="3" placeholder="Écrire une annonce..."></textarea>
+<button onclick="addAnnouncement()">Ajouter l'annonce</button>
 <ul id="announcementList"></ul>
 
-<h3>Message de bienvenue</h3>
-<textarea id="welcomeText" rows="2" placeholder="Écrire le message de bienvenue..."></textarea>
-<button class="blockBtn" onclick="setWelcomeMessage()">Enregistrer</button>
-<p>Message actuel : <span id="currentWelcome"></span></p>
 </div>
 
 <script>
-const adminUser = {username:"admin", password:"admin"};
-let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
-let announcements = JSON.parse(localStorage.getItem('announcements')) || [];
-let selectedDay = null;
+// --- Admin login ---
+const adminAccount = {username:"admin", password:"admin"}; // à modifier si besoin
 
-// --- Connexion ---
-function login(){
-    const u=document.getElementById('username').value.trim();
-    const p=document.getElementById('password').value.trim();
-    if(u===adminUser.username && p===adminUser.password){
+function loginAdmin(){
+    const u=document.getElementById('adminUser').value;
+    const p=document.getElementById('adminPass').value;
+    if(u===adminAccount.username && p===adminAccount.password){
         document.getElementById('loginDiv').classList.add('hidden');
         document.getElementById('adminDiv').classList.remove('hidden');
-        generateCalendar(); generateAdminTable(); displayAnnouncements(); displayWelcomeMessage();
+        loadAdminData();
     } else { document.getElementById('loginError').style.display='block'; }
 }
-function logout(){ window.location.reload(); }
+
+function logout(){
+    document.getElementById('adminDiv').classList.add('hidden');
+    document.getElementById('loginDiv').classList.remove('hidden');
+}
+
+// --- Mode sombre ---
 function toggleMode(){ document.body.classList.toggle('dark-mode'); }
 
-// --- Calendrier Admin ---
-const calendar = document.getElementById('calendar');
-function generateCalendar(){
-    calendar.innerHTML="";
-    for(let day=1;day<=30;day++){
-        const div=document.createElement('div'); div.textContent=day; div.className='day';
-        div.addEventListener('click',()=>{ selectedDay=day; showTimeSlots(day); document.querySelectorAll('.day').forEach(d=>d.classList.remove('selected')); div.classList.add('selected'); });
-        calendar.appendChild(div);
-    }
-}
-
-// --- Grille horaires ---
-function showTimeSlots(day){
-    const container=document.getElementById('timeSlots'); const grid=document.getElementById('timeGrid');
-    container.classList.remove('hidden'); grid.innerHTML="";
-    const slots=["09:00","10:30","12:00","13:30","15:00"];
-    slots.forEach(hour=>{
-        const div=document.createElement('div'); div.textContent=hour; div.className='slot';
-        const reservedIndex = reservations.findIndex(r=>r.jour===day && r.heure===hour);
-        if(reservedIndex!==-1){
-            div.classList.add("reserved");
-            div.addEventListener('click',()=>{
-                if(confirm("Voulez-vous annuler cette réservation ?")){
-                    reservations.splice(reservedIndex,1);
-                    localStorage.setItem('reservations', JSON.stringify(reservations));
-                    generateAdminTable(); showTimeSlots(day);
-                }
-            });
-        } else {
-            div.addEventListener('click',()=>{
-                if(confirm("Bloquer ce créneau pour indisponibilité ?")){
-                    reservations.push({jour:day,heure:hour,nom:"Indisponible",email:"",message:""});
-                    localStorage.setItem('reservations', JSON.stringify(reservations));
-                    generateAdminTable(); showTimeSlots(day);
-                }
-            });
-        }
-        grid.appendChild(div);
-    });
-}
-
-// --- Tableau Réservations ---
-function generateAdminTable(){
-    const tbody=document.getElementById('adminTable'); tbody.innerHTML="";
-    reservations.forEach((r,index)=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${r.jour}</td><td>${r.heure}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>
-        <td><button style="background:#ff5555;color:white;border:none;border-radius:6px;cursor:pointer;" onclick="cancelByAdmin(${index})">Annuler</button></td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-// --- Annuler depuis tableau ---
-function cancelByAdmin(index){ if(confirm("Voulez-vous vraiment annuler cette réservation ?")){ reservations.splice(index,1); localStorage.setItem('reservations',JSON.stringify(reservations)); generateAdminTable(); if(selectedDay) showTimeSlots(selectedDay); } }
-
-// --- Annonces ---
-function publishAnnouncement(){
-    const msg=document.getElementById('announcementText').value.trim();
-    if(msg===""){ alert("Écrire un message."); return; }
-    announcements.push(msg); localStorage.setItem('announcements', JSON.stringify(announcements));
-    document.getElementById('announcementText').value=''; displayAnnouncements();
-}
-
-function displayAnnouncements(){
-    const ul=document.getElementById('announcementList'); ul.innerHTML="";
-    announcements.forEach((a,index)=>{
-        const li=document.createElement('li'); li.textContent = a + " ";
-        const btn = document.createElement('button');
-        btn.textContent = "Supprimer";
-        btn.style.background = "#ff5555"; btn.style.color = "white"; btn.style.border = "none";
-        btn.style.borderRadius = "5px"; btn.style.marginLeft = "10px"; btn.style.cursor = "pointer";
-        btn.onclick = ()=>{ if(confirm("Supprimer ce message ?")){ announcements.splice(index,1); localStorage.setItem('announcements', JSON.stringify(announcements)); displayAnnouncements(); } };
-        li.appendChild(btn); ul.appendChild(li);
-    });
+// --- Splash ---
+function updateSplash(){
+    const text=document.getElementById('splashText').value;
+    const color=document.getElementById('splashColor').value;
+    localStorage.setItem('splashText', text);
+    localStorage.setItem('splashColor', color);
+    alert("Splash mis à jour !");
 }
 
 // --- Message de bienvenue ---
-function setWelcomeMessage(){
-    const msg = document.getElementById('welcomeText').value.trim();
+function updateWelcomeMessage(){
+    const msg=document.getElementById('welcomeMessage').value;
     localStorage.setItem('welcomeMessage', msg);
-    displayWelcomeMessage();
+    alert("Message de bienvenue mis à jour !");
 }
 
-function displayWelcomeMessage(){
-    const msg = localStorage.getItem('welcomeMessage') || "";
-    document.getElementById('currentWelcome').textContent = msg;
+// --- Réservations ---
+let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
+function loadAdminData(){
+    reservations = JSON.parse(localStorage.getItem('reservations')) || [];
+    const tbody=document.getElementById('adminTable');
+    tbody.innerHTML="";
+    reservations.forEach((r,index)=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.jour}</td><td>${r.heure}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>
+        <td><button onclick="cancelReservation(${index})">Annuler</button></td>`;
+        tbody.appendChild(tr);
+    });
+
+    // Load splash + welcome
+    document.getElementById('splashText').value = localStorage.getItem('splashText') || "";
+    document.getElementById('splashColor').value = localStorage.getItem('splashColor') || "#0077ff";
+    document.getElementById('welcomeMessage').value = localStorage.getItem('welcomeMessage') || "";
+
+    // Load announcements
+    loadAnnouncements();
+}
+
+function cancelReservation(index){
+    if(confirm("Voulez-vous annuler cette réservation ?")){
+        reservations.splice(index,1);
+        localStorage.setItem('reservations', JSON.stringify(reservations));
+        loadAdminData();
+    }
+}
+
+// --- Annonces ---
+function addAnnouncement(){
+    const text=document.getElementById('announcementText').value.trim();
+    if(text===""){ return; }
+    let announcements = JSON.parse(localStorage.getItem('announcements')) || [];
+    announcements.push(text);
+    localStorage.setItem('announcements', JSON.stringify(announcements));
+    document.getElementById('announcementText').value="";
+    loadAnnouncements();
+}
+
+function loadAnnouncements(){
+    const announcements = JSON.parse(localStorage.getItem('announcements')) || [];
+    const list = document.getElementById('announcementList');
+    list.innerHTML="";
+    announcements.forEach((a,index)=>{
+        const li=document.createElement('li');
+        li.textContent = a + " ";
+        const del = document.createElement('button');
+        del.textContent="Supprimer";
+        del.onclick=()=>{ removeAnnouncement(index); };
+        li.appendChild(del);
+        list.appendChild(li);
+    });
+}
+
+function removeAnnouncement(index){
+    let announcements = JSON.parse(localStorage.getItem('announcements')) || [];
+    announcements.splice(index,1);
+    localStorage.setItem('announcements', JSON.stringify(announcements));
+    loadAnnouncements();
 }
 </script>
 </body>
