@@ -2,113 +2,239 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Shadi Piscine - Admin</title>
+<title>Shadi Piscine - Réservation & Admin</title>
 <style>
 body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
-.container { max-width:700px; margin:auto; padding:20px; }
+.container { max-width:600px; margin:auto; padding:20px; }
+input, button, textarea { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
 button { border:none; cursor:pointer; border-radius:5px; padding:8px; margin:5px; }
 button:hover { opacity:0.9; }
 button.logoutBtn { background:#ff5555; color:white; }
+button.createBtn { background:#00aa55; color:white; }
+button.loginBtn { background:#ff3333; color:white; }
 button.cancelBtn { background:#ff9900; color:white; }
+button.adminCancelBtn { background:#cc0000; color:white; }
 .hidden { display:none; }
 .calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:10px 0; }
 .day { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; }
 .day:hover { background:#cce5ff; }
-.day.blocked { background:#999; color:white; cursor:pointer; }
 .day.reserved { background:#ccc; color:#666; cursor:not-allowed; }
-table { width:100%; border-collapse:collapse; margin-top:15px;}
-th, td { border:1px solid #000; padding:8px; text-align:center;}
+.attention { background:#ffdddd; border:1px solid #ff5c5c; padding:10px; border-radius:8px; font-weight:bold; color:#a80000; margin-bottom:15px; text-align:center; }
+.contact { margin-top:20px; padding:10px; background:#e0f7ff; border:1px solid #00aaff; border-radius:8px; }
+table { border-collapse: collapse; width: 100%; margin-top:10px; }
+th, td { border:1px solid #ccc; padding:8px; text-align:center; }
+th { background:#eee; }
 </style>
 </head>
 <body>
 
-<div class="container">
-<h2>Admin - Shadi Piscine</h2>
-<button class="logoutBtn" onclick="logout()">Déconnexion</button>
-<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
+<!-- Connexion -->
+<div class="container" id="loginDiv">
+<h2>Connexion - Shadi Piscine</h2>
+<label>Nom d'utilisateur :</label>
+<input type="text" id="username">
+<label>Mot de passe :</label>
+<input type="password" id="password">
+<button class="loginBtn" onclick="login()">Se connecter</button>
+<button class="createBtn" onclick="showCreateDiv()">Créer un compte</button>
+<div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
+</div>
 
-<h3>Calendrier Admin - Bloquer/Débloquer les jours</h3>
-<div class="calendar" id="adminCalendar"></div>
-<p>Les jours gris sont bloqués pour les clients.</p>
+<!-- Création compte -->
+<div class="container hidden" id="createDiv">
+<h2>Créer un compte - Shadi Piscine</h2>
+<label>Nom d'utilisateur :</label>
+<input type="text" id="newUsername">
+<label>Mot de passe :</label>
+<input type="password" id="newPassword">
+<button onclick="createAccount()">Créer le compte</button>
+<div id="createError" style="color:red; display:none; margin-top:10px;"></div>
+</div>
+
+<!-- Page client -->
+<div class="container hidden" id="resaDiv">
+<h2>Shadi Piscine - Réservation</h2>
+<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
+<button class="logoutBtn" onclick="logout()">Déconnexion</button>
+<button id="cancelMyResaBtn" class="logoutBtn hidden" onclick="cancelMyReservation()">Annuler ma réservation</button>
+
+<div class="attention">
+⚠️ Attention, vérifiez bien vos informations avant d’envoyer !
+</div>
+
+<h3>Calendrier</h3>
+<div class="calendar" id="calendar"></div>
+
+<form id="resaForm">
+<label>Nom complet :</label>
+<input type="text" name="Nom" required>
+
+<label>Email :</label>
+<input type="email" name="Email" required>
+
+<label>Date choisie :</label>
+<input type="text" id="selectedDate" name="Date" readonly required>
+
+<label>Message :</label>
+<textarea name="Message" rows="4"></textarea>
+
+<button type="submit">Réserver</button>
+</form>
+
+<div class="contact">
+Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com</strong>
+</div>
+</div>
+
+<!-- Page admin -->
+<div class="container hidden" id="adminDiv">
+<h2>Admin - Réservations</h2>
+<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
+<button class="logoutBtn" onclick="logout()">Déconnexion</button>
 
 <h3>Réservations</h3>
 <table>
-<tr><th>Jour</th><th>Nom</th><th>Email</th><th>Message</th><th>Action</th></tr>
+<tr><th>Jour</th><th>Heure</th><th>Nom</th><th>Email</th><th>Message</th><th>Action</th></tr>
 <tbody id="adminTable"></tbody>
 </table>
 </div>
 
 <script>
-// --- Admin ---
+// --- Comptes ---
+let savedAccount = JSON.parse(localStorage.getItem('account'));
+const adminUser = {username:"admin", password:"admin"};
 let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
-let blockedDays = JSON.parse(localStorage.getItem('blockedDays')) || [];
+let selectedDay = null;
+let selectedHour = null;
 
-// --- Mode sombre ---
-function toggleMode(){ document.body.classList.toggle('dark-mode'); }
+function showCreateOrLogin(){
+    if(savedAccount){
+        document.getElementById('createDiv').classList.add('hidden');
+        document.getElementById('loginDiv').classList.remove('hidden');
+    } else {
+        document.getElementById('createDiv').classList.remove('hidden');
+        document.getElementById('loginDiv').classList.add('hidden');
+    }
+}
+
+function showCreateDiv(){
+    document.getElementById('loginDiv').classList.add('hidden');
+    document.getElementById('createDiv').classList.remove('hidden');
+}
+
+function createAccount(){
+    const u = document.getElementById('newUsername').value.trim();
+    const p = document.getElementById('newPassword').value.trim();
+    if(u===""||p===""){document.getElementById('createError').textContent="Veuillez remplir tous les champs";document.getElementById('createError').style.display="block";return;}
+    savedAccount = {username:u,password:p};
+    localStorage.setItem('account', JSON.stringify(savedAccount));
+    alert("Compte créé !");
+    showCreateOrLogin();
+}
+
+function login(){
+    const u=document.getElementById('username').value;
+    const p=document.getElementById('password').value;
+    if(u===adminUser.username && p===adminUser.password){
+        document.getElementById('loginDiv').classList.add('hidden');
+        document.getElementById('adminDiv').classList.remove('hidden'); 
+        generateAdminTable();
+    } else if(savedAccount && u===savedAccount.username && p===savedAccount.password){
+        document.getElementById('loginDiv').classList.add('hidden');
+        document.getElementById('resaDiv').classList.remove('hidden');
+        generateCalendar(u);
+    } else {
+        document.getElementById('loginError').style.display='block';
+    }
+}
 
 function logout(){
-    alert("Déconnexion admin !");
-    location.reload();
+    document.getElementById('resaDiv').classList.add('hidden');
+    document.getElementById('adminDiv').classList.add('hidden');
+    document.getElementById('loginDiv').classList.remove('hidden');
 }
 
-// --- Générer calendrier admin ---
-function generateAdminCalendar(){
-    const calendar = document.getElementById('adminCalendar');
+function toggleMode(){ document.body.classList.toggle('dark-mode'); }
+
+// --- Génération calendrier client ---
+function generateCalendar(userEmail){
+    const calendar = document.getElementById('calendar');
     calendar.innerHTML="";
+    reservations = reservations.filter(r=>!r.annule);
+    localStorage.setItem('reservations', JSON.stringify(reservations));
+
     for(let day=1; day<=30; day++){
-        const div = document.createElement('div');
-        div.textContent = day;
+        const div=document.createElement('div');
+        div.textContent=day;
         div.className='day';
-        if(blockedDays.includes(day)){
-            div.classList.add('blocked');
+        const dayReservations = reservations.filter(r=>r.jour===day);
+        if(dayReservations.length>0){
+            div.classList.add('reserved');
+        } else {
+            div.addEventListener('click', ()=>{
+                let hour;
+                do{
+                    hour = prompt("Entrez l'heure souhaitée (HH:MM), 09:00-16:00, chaque cours 1h + 30min pause :");
+                    if(hour===null) return;
+                    const [h,m] = hour.split(':').map(Number);
+                    if(h<9||h>16||m<0||m>=60){ alert("Heure invalide"); continue; }
+                    const chosenMinutes = h*60+m;
+                    let conflict = false;
+                    for(const r of dayReservations){
+                        const [rh,rm] = r.heure.split(':').map(Number);
+                        const start = rh*60+rm;
+                        const endWithPause = start + 90;
+                        if(chosenMinutes >= start && chosenMinutes < endWithPause){ conflict=true; break; }
+                    }
+                    if(conflict){ alert("Ce créneau est occupé ou pendant la pause"); continue; }
+                    break;
+                }while(true);
+                selectedDay = day;
+                selectedHour = hour;
+                document.getElementById('selectedDate').value = `Jour ${day} à ${hour}`;
+                document.querySelectorAll('.day').forEach(d=>d.style.border='1px solid #ccc');
+                div.style.border='2px solid #0077ff';
+            });
         }
-        div.addEventListener('click',()=>{
-            if(blockedDays.includes(day)){
-                blockedDays = blockedDays.filter(d => d!==day);
-                div.classList.remove('blocked');
-            } else {
-                blockedDays.push(day);
-                div.classList.add('blocked');
-            }
-            localStorage.setItem('blockedDays', JSON.stringify(blockedDays));
-            generateCalendarClients(); // Mettre à jour les jours réservés côté client
-        });
         calendar.appendChild(div);
     }
+    showCancelButton(userEmail);
 }
 
-// --- Générer tableau réservations ---
-function generateAdminTable(){
-    const tbody = document.getElementById('adminTable');
-    tbody.innerHTML="";
-    reservations.forEach((r,index)=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.jour}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>
-        <td><button class="cancelBtn" onclick="cancelReservation(${index})">Annuler</button></td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-function cancelReservation(index){
-    if(confirm("Voulez-vous vraiment annuler cette réservation ?")){
-        reservations[index].annule = true;
-        localStorage.setItem('reservations', JSON.stringify(reservations));
-        generateAdminTable();
-        alert("Réservation annulée ! Le client sera informé à sa prochaine connexion.");
+// --- Formulaire réservation ---
+document.getElementById('resaForm').addEventListener('submit',function(e){
+    e.preventDefault();
+    if(selectedDay===null||selectedHour===null){alert("Veuillez sélectionner un jour et une heure");return;}
+    if(confirm("Confirmer réservation ?")){
+        const nom=document.querySelector('input[name="Nom"]').value;
+        const email=document.querySelector('input[name="Email"]').value;
+        const message=document.querySelector('textarea[name="Message"]').value;
+        reservations.push({jour:selectedDay, heure:selectedHour, nom,email,message,annule:false});
+        localStorage.setItem('reservations',JSON.stringify(reservations));
+        alert("Réservation confirmée ! Pour contact : shadi.siteweb@gmail.com");
+        generateCalendar(email);
+        this.reset();
+        document.getElementById('selectedDate').value='';
+        selectedDay=null;
+        selectedHour=null;
     }
+});
+
+// --- Annulation client ---
+function showCancelButton(userEmail){
+    const myResa = reservations.find(r=>r.email===userEmail&&!r.annule);
+    const btn = document.getElementById('cancelMyResaBtn');
+    if(myResa){ btn.classList.remove('hidden'); } else { btn.classList.add('hidden'); }
 }
 
-// --- Fonction pour synchroniser le calendrier client avec les jours bloqués ---
-function generateCalendarClients(){
-    const calendar = document.getElementById('adminCalendar');
-    const clientCalendar = document.getElementById('adminCalendar'); // Pour simuler côté client
-    // En vrai côté client, le script client lit blockedDays pour afficher jours gris
-}
-
-// --- Initialisation ---
-generateAdminCalendar();
-generateAdminTable();
-</script>
-</body>
-</html>
+function cancelMyReservation(){
+    const email = document.querySelector('input[name="Email"]').value;
+    const index = reservations.findIndex(r=>r.email===email&&!r.annule);
+    if(index!==-1){
+        if(confirm(`Annuler votre réservation pour le jour ${reservations[index].jour} à ${reservations[index].heure} ?`)){
+            reservations.splice(index,1);
+            localStorage.setItem('reservations',JSON.stringify(reservations));
+            generateCalendar(email);
+            showCancelButton(email);
+            document.getElementById('resa
