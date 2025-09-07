@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Shadi Piscine - Réservation & Admin</title>
+<title>Shadi Piscine - Réservation</title>
 <style>
 body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
@@ -25,9 +25,13 @@ button:hover { background:#0055cc; }
 .slot.reserved { background:#ccc; cursor:not-allowed; color:#666; }
 .slot.mine { background:#00aa55; color:white; }
 #welcomeMessage { background:#e0f7ff; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold; text-align:center; }
+#splash { position:fixed;top:0;left:0;width:100%;height:100%;background:#0077ff;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:9999; color:white; font-size:24px; font-weight:bold; opacity:1; transition:opacity 1s;}
 </style>
 </head>
 <body>
+
+<!-- Splash message -->
+<div id="splash">Bienvenue sur Shadi Piscine !</div>
 
 <!-- Connexion utilisateur/admin -->
 <div class="container" id="loginDiv">
@@ -36,7 +40,7 @@ button:hover { background:#0055cc; }
 <input type="text" id="username">
 <label>Mot de passe :</label>
 <input type="password" id="password">
-<button onclick="login()" style="background:red;">Se connecter</button>
+<button style="background:red;" onclick="login()">Se connecter</button>
 <button class="createBtn" onclick="showCreateDiv()">Créer un compte</button>
 <div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
 </div>
@@ -72,19 +76,14 @@ button:hover { background:#0055cc; }
 <form id="resaForm">
 <label>Nom complet :</label>
 <input type="text" name="Nom" required>
-
 <label>Email :</label>
 <input type="email" name="Email" required>
-
 <label>Date choisie :</label>
 <input type="text" id="selectedDate" name="Date" readonly required>
-
 <label>Heure :</label>
 <input type="text" id="selectedTime" name="Heure" readonly required>
-
 <label>Message :</label>
 <textarea name="Message" rows="4"></textarea>
-
 <button type="submit">Réserver</button>
 <button type="button" style="background:#ff5555;color:white;" onclick="cancelMyReservation()">Annuler ma réservation</button>
 </form>
@@ -95,17 +94,21 @@ Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com<
 </div>
 
 <script>
+// --- Splash ---
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splash');
+    splash.style.opacity = 0;
+    setTimeout(()=>{ splash.style.display='none'; }, 1000);
+  }, 1500);
+});
+
 // --- Comptes ---
 let savedAccount = JSON.parse(localStorage.getItem('account')) || null;
-
-function showCreateDiv(){
-    document.getElementById('loginDiv').classList.add('hidden');
-    document.getElementById('createDiv').classList.remove('hidden');
-}
-
+function showCreateDiv(){ document.getElementById('loginDiv').classList.add('hidden'); document.getElementById('createDiv').classList.remove('hidden'); }
 function createAccount(){
-    const u = document.getElementById('newUsername').value.trim();
-    const p = document.getElementById('newPassword').value.trim();
+    const u=document.getElementById('newUsername').value.trim();
+    const p=document.getElementById('newPassword').value.trim();
     if(u===""||p===""){document.getElementById('createError').textContent="Veuillez remplir tous les champs";document.getElementById('createError').style.display="block";return;}
     savedAccount = {username:u,password:p};
     localStorage.setItem('account', JSON.stringify(savedAccount));
@@ -121,18 +124,12 @@ function login(){
     if(savedAccount && u===savedAccount.username && p===savedAccount.password){
         document.getElementById('loginDiv').classList.add('hidden');
         document.getElementById('resaDiv').classList.remove('hidden');
-        generateCalendar();
-        showWelcomeMessage();
-    } else {
-        document.getElementById('loginError').style.display='block';
-    }
+        generateCalendar(); showWelcomeMessage();
+    } else { document.getElementById('loginError').style.display='block'; }
 }
 
 // --- Déconnexion ---
-function logout(){
-    document.getElementById('resaDiv').classList.add('hidden');
-    document.getElementById('loginDiv').classList.remove('hidden');
-}
+function logout(){ document.getElementById('resaDiv').classList.add('hidden'); document.getElementById('loginDiv').classList.remove('hidden'); }
 
 // --- Mode sombre ---
 function toggleMode(){ document.body.classList.toggle('dark-mode'); }
@@ -211,8 +208,7 @@ function cancelMyReservation(){
     if(confirm("Voulez-vous annuler toutes vos réservations ?")){
         reservations = reservations.filter(r=>r.nom!==savedAccount.username);
         localStorage.setItem('reservations',JSON.stringify(reservations));
-        generateCalendar();
-        slotsDiv.innerHTML="";
+        generateCalendar(); slotsDiv.innerHTML="";
     }
 }
 
