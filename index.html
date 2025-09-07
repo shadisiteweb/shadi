@@ -1,247 +1,185 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Shadi Piscine - Réservation </title>
-<style>
-body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
-.dark-mode { background:#121212; color:#fff; }
-.container { max-width:600px; margin:auto; padding:20px; }
-input, button, textarea { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
-button { border:none; cursor:pointer; border-radius:5px; padding:8px; margin:5px; }
-button:hover { opacity:0.9; }
-button.logoutBtn { background:#ff5555; color:white; }
-button.createBtn { background:#00aa55; color:white; }
-button.loginBtn { background:#ff3333; color:white; }
-button.cancelBtn { background:#ff9900; color:white; }
-.hidden { display:none; }
-.calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:10px 0; }
-.day { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; }
-.day:hover { background:#cce5ff; }
-.day.reserved { background:#ccc; color:#666; cursor:not-allowed; }
-.attention { background:#ffdddd; border:1px solid #ff5c5c; padding:10px; border-radius:8px; font-weight:bold; color:#a80000; margin-bottom:15px; text-align:center; }
-.contact { margin-top:20px; padding:10px; background:#e0f7ff; border:1px solid #00aaff; border-radius:8px; }
-</style>
+  <meta charset="UTF-8">
+  <title>Réservation Piscine Shadi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+    .day {
+      padding: 20px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .day.reserved { background: #ccc; color: #666; cursor:not-allowed; }
+    .day.blocked { background: #444; color: #fff; cursor:not-allowed; }
+    .day:hover { background: #cce5ff; }
+
+    /* Grille des horaires */
+    #timeSlots { margin-top:20px; }
+    #timeGrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .slot {
+      padding: 20px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .slot:hover { background:#cce5ff; }
+    .slot.reserved { background:#ccc; color:#666; cursor:not-allowed; }
+    .slot.selected { border:2px solid #0077ff; }
+
+    form {
+      margin-top: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    input, textarea, button {
+      display:block;
+      width:100%;
+      margin:10px 0;
+      padding:10px;
+    }
+    button { background:red; color:white; border:none; cursor:pointer; border-radius:6px; }
+  </style>
 </head>
 <body>
+  <h2>Réserver une séance</h2>
+  <p>Cliquez sur un jour puis choisissez un horaire disponible.</p>
+  <div id="calendar" class="calendar"></div>
 
-<!-- Connexion utilisateur/admin -->
-<div class="container" id="loginDiv">
-<h2>Connexion - Shadi Piscine</h2>
-<label>Nom d'utilisateur :</label>
-<input type="text" id="username">
-<label>Mot de passe :</label>
-<input type="password" id="password">
-<button class="loginBtn" onclick="login()">Se connecter</button>
-<button class="createBtn" onclick="showCreateDiv()">Créer un compte</button>
-<div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
-</div>
+  <div id="timeSlots" class="hidden">
+    <h3>Choisissez un horaire</h3>
+    <div id="timeGrid"></div>
+  </div>
 
-<!-- Création compte -->
-<div class="container hidden" id="createDiv">
-<h2>Créer un compte - Shadi Piscine</h2>
-<label>Nom d'utilisateur :</label>
-<input type="text" id="newUsername">
-<label>Mot de passe :</label>
-<input type="password" id="newPassword">
-<button onclick="createAccount()">Créer le compte</button>
-<div id="createError" style="color:red; display:none; margin-top:10px;"></div>
-</div>
+  <form id="reservationForm">
+    <input type="text" id="nom" placeholder="Votre nom" required>
+    <input type="email" id="email" placeholder="Votre email" required>
+    <textarea id="message" placeholder="Message (optionnel)"></textarea>
+    <input type="text" id="selectedDate" readonly>
+    <button type="submit">Réserver</button>
+  </form>
 
-<!-- Page utilisateur -->
-<div class="container hidden" id="resaDiv">
-<h2>Shadi Piscine - Réservation</h2>
-<button onclick="toggleMode()">🌙/☀️ Mode sombre/blanc</button>
-<button class="logoutBtn" onclick="logout()">Déconnexion</button>
-<button id="cancelMyResaBtn" class="logoutBtn hidden" onclick="cancelMyReservation()">Annuler ma réservation</button>
+  <p>Pour tout contact direct : <b>shadi.siteweb@gmail.com</b></p>
 
-<div class="attention">
-⚠️ Attention, vérifiez bien vos informations avant d’envoyer !
-</div>
+  <script>
+    let reservations = JSON.parse(localStorage.getItem("reservations") || "[]");
+    let blockedDays = JSON.parse(localStorage.getItem("blockedDays") || "[]");
 
-<h3>Calendrier</h3>
-<div class="calendar" id="calendar"></div>
+    let selectedDay = null;
+    let selectedHour = null;
 
-<form id="resaForm">
-<label>Nom complet :</label>
-<input type="text" name="Nom" required>
-
-<label>Email :</label>
-<input type="email" name="Email" required>
-
-<label>Date choisie :</label>
-<input type="text" id="selectedDate" name="Date" readonly required>
-
-<label>Message :</label>
-<textarea name="Message" rows="4"></textarea>
-
-<button type="submit">Réserver</button>
-</form>
-
-<div class="contact">
-Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com</strong>
-</div>
-</div>
-
-<script>
-// --- Comptes ---
-let savedAccount = JSON.parse(localStorage.getItem('account'));
-const adminUser = {username:"admin", password:"admin"};
-let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
-let blockedDays = JSON.parse(localStorage.getItem('blockedDays')) || [];
-let selectedDay = null;
-let selectedHour = null;
-
-function showCreateOrLogin(){
-    if(savedAccount){
-        document.getElementById('createDiv').classList.add('hidden');
-        document.getElementById('loginDiv').classList.remove('hidden');
-    } else {
-        document.getElementById('createDiv').classList.remove('hidden');
-        document.getElementById('loginDiv').classList.add('hidden');
-    }
-}
-
-function showCreateDiv(){
-    document.getElementById('loginDiv').classList.add('hidden');
-    document.getElementById('createDiv').classList.remove('hidden');
-}
-
-function createAccount(){
-    const u = document.getElementById('newUsername').value.trim();
-    const p = document.getElementById('newPassword').value.trim();
-    if(u===""||p===""){document.getElementById('createError').textContent="Veuillez remplir tous les champs";document.getElementById('createError').style.display="block";return;}
-    savedAccount = {username:u,password:p};
-    localStorage.setItem('account', JSON.stringify(savedAccount));
-    alert("Compte créé !");
-    showCreateOrLogin();
-}
-
-function login(){
-    const u=document.getElementById('username').value;
-    const p=document.getElementById('password').value;
-    if(u===adminUser.username && p===adminUser.password){
-        alert("Connecté comme admin !");
-    } else if(savedAccount && u===savedAccount.username && p===savedAccount.password){
-        document.getElementById('loginDiv').classList.add('hidden');
-        document.getElementById('resaDiv').classList.remove('hidden');
-        generateCalendar(u);
-    } else {
-        document.getElementById('loginError').style.display='block';
-    }
-}
-
-function logout(){
-    document.getElementById('resaDiv').classList.add('hidden');
-    document.getElementById('loginDiv').classList.remove('hidden');
-}
-
-function toggleMode(){ document.body.classList.toggle('dark-mode'); }
-
-// --- Génération du calendrier avec pause de 30 min ---
-function generateCalendar(userEmail){
-    const calendar = document.getElementById('calendar');
-    calendar.innerHTML="";
-
-    // Supprimer les réservations annulées
-    reservations = reservations.filter(r=>!r.annule);
-    localStorage.setItem('reservations', JSON.stringify(reservations));
-
-    for(let day=1; day<=30; day++){
+    function generateCalendar(){
+      const cal=document.getElementById('calendar');
+      cal.innerHTML="";
+      for(let d=1;d<=30;d++){
         const div=document.createElement('div');
-        div.textContent=day;
-        div.className='day';
-        const dayReservations = reservations.filter(r=>r.jour===day);
-        if(dayReservations.length>0 || blockedDays.includes(day)){
-            div.classList.add('reserved');
+        div.textContent=d;
+        div.className="day";
+
+        if(blockedDays.includes(d)){
+          div.classList.add("blocked");
+        }
+        if(reservations.some(r=>r.jour===d && !r.annule)){
+          div.classList.add("reserved");
+        }
+
+        div.addEventListener('click', ()=>{
+          if(div.classList.contains("blocked")) return;
+          showTimeSlots(d);
+        });
+
+        cal.appendChild(div);
+      }
+    }
+
+    function showTimeSlots(day){
+      selectedDay=null;
+      selectedHour=null;
+      const container=document.getElementById("timeSlots");
+      const grid=document.getElementById("timeGrid");
+      container.classList.remove("hidden");
+      grid.innerHTML="";
+
+      const slots=[
+        "09:00-10:00",
+        "10:30-11:30",
+        "12:00-13:00",
+        "13:30-14:30",
+        "15:00-16:00"
+      ];
+
+      slots.forEach(hour=>{
+        const div=document.createElement('div');
+        div.textContent=hour;
+        div.className="slot";
+
+        const reserved=reservations.find(r=>r.jour===day && r.heure===hour && !r.annule);
+        if(reserved){
+          div.classList.add("reserved");
         } else {
-            div.addEventListener('click',()=>{
-                let hour;
-                do{
-                    hour = prompt("Entrez l'heure souhaitée (HH:MM), 09:00-16:00, chaque cours 1h + 30 min pause :");
-                    if(hour===null) return;
-                    const [h,m] = hour.split(':').map(Number);
-                    if(h<9 || h>16 || m<0 || m>=60){ alert("Heure invalide !"); continue; }
-
-                    // Vérifier conflit avec toutes les réservations du jour
-                    let conflict = false;
-                    for(const r of dayReservations){
-                        const [rh,rm] = r.heure.split(':').map(Number);
-                        const start = rh*60+rm;
-                        const endWithPause = start + 90; // 60min cours + 30min pause
-                        const chosenMinutes = h*60+m;
-                        if(chosenMinutes >= start && chosenMinutes < endWithPause){
-                            conflict = true; break;
-                        }
-                    }
-                    if(conflict){ alert("Ce créneau est occupé ou pendant la pause de 30 min après un cours."); continue; }
-
-                    break;
-                }while(true);
-
-                selectedDay = day;
-                selectedHour = hour;
-                document.getElementById('selectedDate').value = `Jour ${day} à ${hour}`;
-                document.querySelectorAll('.day').forEach(d=>d.style.border='1px solid #ccc');
-                div.style.border='2px solid #0077ff';
-            });
+          div.addEventListener("click",()=>{
+            document.querySelectorAll(".slot").forEach(s=>s.classList.remove("selected"));
+            div.classList.add("selected");
+            selectedDay=day;
+            selectedHour=hour;
+            document.getElementById("selectedDate").value=`Jour ${day} - ${hour}`;
+          });
         }
-        calendar.appendChild(div);
+        grid.appendChild(div);
+      });
     }
-    showCancelButton(userEmail);
-}
 
-// --- Formulaire réservation ---
-document.getElementById('resaForm').addEventListener('submit',function(e){
-    e.preventDefault();
-    if(selectedDay===null || selectedHour===null){alert("Veuillez sélectionner un jour et une heure !");return;}
-    if(confirm("Voulez-vous réserver ce créneau ?")){
-        const nom=document.querySelector('input[name="Nom"]').value;
-        const email=document.querySelector('input[name="Email"]').value;
-        const message=document.querySelector('textarea[name="Message"]').value;
-        reservations.push({jour:selectedDay, heure:selectedHour, nom,email,message,annule:false});
-        localStorage.setItem('reservations',JSON.stringify(reservations));
-        alert("Réservation confirmée ! Pour contact : shadi.siteweb@gmail.com");
-        generateCalendar(email);
-        this.reset();
-        document.getElementById('selectedDate').value='';
-        selectedDay=null;
-        selectedHour=null;
-    }
-});
+    document.getElementById("reservationForm").addEventListener("submit",e=>{
+      e.preventDefault();
+      const nom=document.getElementById("nom").value;
+      const email=document.getElementById("email").value;
+      const message=document.getElementById("message").value;
 
-// --- Annulation client ---
-function showCancelButton(userEmail){
-    const myResa = reservations.find(r => r.email === userEmail && !r.annule);
-    const btn = document.getElementById('cancelMyResaBtn');
-    if(myResa){
-        btn.classList.remove('hidden');
-    } else {
-        btn.classList.add('hidden');
-    }
-}
+      if(!selectedDay || !selectedHour){
+        alert("Veuillez choisir un jour et un horaire.");
+        return;
+      }
 
-function cancelMyReservation(){
-    const email = document.querySelector('input[name="Email"]').value;
-    const index = reservations.findIndex(r => r.email === email && !r.annule);
-    if(index !== -1){
-        if(confirm(`Voulez-vous vraiment annuler votre réservation pour le jour ${reservations[index].jour} à ${reservations[index].heure} ?`)){
-            reservations.splice(index,1);
-            localStorage.setItem('reservations', JSON.stringify(reservations));
-            alert("Votre réservation a été annulée !");
-            generateCalendar(email);
-            showCancelButton(email);
-            document.getElementById('resaForm').reset();
-            document.getElementById('selectedDate').value='';
-            selectedDay = null;
-            selectedHour = null;
-        }
-    } else {
-        alert("Vous n'avez pas de réservation active !");
-    }
-}
+      reservations.push({jour:selectedDay, heure:selectedHour, nom,email,message, annule:false});
+      localStorage.setItem("reservations",JSON.stringify(reservations));
 
-showCreateOrLogin();
-</script>
+      alert("Réservation confirmée !");
+      generateCalendar();
+      document.getElementById("reservationForm").reset();
+      document.getElementById("selectedDate").value="";
+      document.getElementById("timeSlots").classList.add("hidden");
+    });
+
+    generateCalendar();
+  </script>
 </body>
 </html>
