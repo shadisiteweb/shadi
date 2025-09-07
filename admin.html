@@ -71,6 +71,7 @@ let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
 let announcements = JSON.parse(localStorage.getItem('announcements')) || [];
 let selectedDay = null;
 
+// --- Connexion ---
 function login(){
     const u=document.getElementById('username').value.trim();
     const p=document.getElementById('password').value.trim();
@@ -146,9 +147,18 @@ function publishAnnouncement(){
     announcements.push(msg); localStorage.setItem('announcements', JSON.stringify(announcements));
     document.getElementById('announcementText').value=''; displayAnnouncements();
 }
+
 function displayAnnouncements(){
     const ul=document.getElementById('announcementList'); ul.innerHTML="";
-    announcements.forEach(a=>{ const li=document.createElement('li'); li.textContent=a; ul.appendChild(li); });
+    announcements.forEach((a,index)=>{
+        const li=document.createElement('li'); li.textContent = a + " ";
+        const btn = document.createElement('button');
+        btn.textContent = "Supprimer";
+        btn.style.background = "#ff5555"; btn.style.color = "white"; btn.style.border = "none";
+        btn.style.borderRadius = "5px"; btn.style.marginLeft = "10px"; btn.style.cursor = "pointer";
+        btn.onclick = ()=>{ if(confirm("Supprimer ce message ?")){ announcements.splice(index,1); localStorage.setItem('announcements', JSON.stringify(announcements)); displayAnnouncements(); } };
+        li.appendChild(btn); ul.appendChild(li);
+    });
 }
 </script>
 </body>
