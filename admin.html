@@ -16,8 +16,8 @@ button:hover { opacity:0.85; }
 .calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:15px 0; }
 .day, .slot { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
 .day:hover, .slot:hover { background:#cce5ff; }
-.day.reserved, .slot.reserved { background:#ccc; color:#666; cursor:not-allowed; }
 .day.selected, .slot.selected { border:2px solid #0077ff; }
+.day.reserved, .slot.reserved { background:#ccc; color:#666; cursor:not-allowed; }
 table { width:100%; border-collapse:collapse; margin-top:15px; }
 th, td { padding:10px; text-align:center; border:1px solid #ccc; border-radius:6px; }
 th { background:#0077ff; color:white; }
@@ -26,12 +26,24 @@ tr:nth-child(even) { background:#f0f8ff; }
 </head>
 <body>
 
-<div class="container" id="adminDiv">
+<!-- Connexion Admin -->
+<div class="container" id="loginDiv">
+<h2>Connexion Admin - Shadi Piscine</h2>
+<label>Nom d'utilisateur :</label>
+<input type="text" id="username">
+<label>Mot de passe :</label>
+<input type="password" id="password">
+<button style="background:red;" onclick="login()">Se connecter</button>
+<div id="loginError" style="color:red; display:none; margin-top:10px;">Nom ou mot de passe incorrect</div>
+</div>
+
+<!-- Admin Dashboard -->
+<div class="container hidden" id="adminDiv">
 <h2>Admin - Shadi Piscine</h2>
 <button onclick="toggleMode()" class="blockBtn">🌙/☀️ Mode sombre/blanc</button>
 <button class="logoutBtn" onclick="logout()">Déconnexion</button>
 
-<h3>Calendrier (Cliquez sur un jour pour voir les créneaux)</h3>
+<h3>Calendrier (Cliquez sur un jour pour gérer les créneaux)</h3>
 <div class="calendar" id="calendar"></div>
 
 <div id="timeSlots" class="hidden">
@@ -41,19 +53,38 @@ tr:nth-child(even) { background:#f0f8ff; }
 
 <h3>Réservations</h3>
 <table>
-<tr><th>Jour</th><th>Heure</th><th>Nom</th><th>Email</th><th>Message</th></tr>
+<tr><th>Jour</th><th>Heure</th><th>Nom</th><th>Email</th><th>Message</th><th>Action</th></tr>
 <tbody id="adminTable"></tbody>
 </table>
 </div>
 
 <script>
+// --- Comptes ---
+const adminUser = {username:"admin", password:"admin"};
 let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
-const calendar = document.getElementById('calendar');
 let selectedDay = null;
 
-function toggleMode(){ document.body.classList.toggle('dark-mode'); }
-function logout(){ window.location.reload(); }
+function login(){
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value.trim();
+    if(u === adminUser.username && p === adminUser.password){
+        document.getElementById('loginDiv').classList.add('hidden');
+        document.getElementById('adminDiv').classList.remove('hidden');
+        generateCalendar();
+        generateAdminTable();
+    } else {
+        document.getElementById('loginError').style.display='block';
+    }
+}
 
+function logout(){
+    window.location.reload();
+}
+
+function toggleMode(){ document.body.classList.toggle('dark-mode'); }
+
+// --- Calendrier admin ---
+const calendar = document.getElementById('calendar');
 function generateCalendar(){
     calendar.innerHTML="";
     for(let day=1;day<=30;day++){
@@ -70,47 +101,66 @@ function generateCalendar(){
     }
 }
 
+// --- Grille horaires admin ---
 function showTimeSlots(day){
-  const container=document.getElementById('timeSlots');
-  const grid=document.getElementById('timeGrid');
-  container.classList.remove('hidden');
-  grid.innerHTML="";
+    const container=document.getElementById('timeSlots');
+    const grid=document.getElementById('timeGrid');
+    container.classList.remove('hidden');
+    grid.innerHTML="";
 
-  const slots=["09:00","10:30","12:00","13:30","15:00"];
-  slots.forEach(hour=>{
-    const div=document.createElement('div');
-    div.textContent=hour;
-    div.className="slot";
+    const slots=["09:00","10:30","12:00","13:30","15:00"];
+    slots.forEach(hour=>{
+        const div=document.createElement('div');
+        div.textContent=hour;
+        div.className="slot";
 
-    const reserved = reservations.find(r=>r.jour===day && r.heure===hour);
-    if(reserved){
-        div.classList.add("reserved");
-    } else {
-        div.addEventListener('click',()=>{
-            if(confirm("Bloquer ce créneau pour indisponibilité ?")){
-                reservations.push({jour:day,heure:hour,nom:"Indisponible",email:"",message:""});
-                localStorage.setItem('reservations', JSON.stringify(reservations));
-                showTimeSlots(day);
-                generateAdminTable();
-            }
-        });
-    }
-    grid.appendChild(div);
-  });
+        const reservedIndex = reservations.findIndex(r=>r.jour===day && r.heure===hour);
+
+        if(reservedIndex!==-1){
+            div.classList.add("reserved");
+            div.addEventListener('click',()=>{
+                if(confirm("Voulez-vous annuler cette réservation ?")){
+                    reservations.splice(reservedIndex,1);
+                    localStorage.setItem('reservations', JSON.stringify(reservations));
+                    generateAdminTable();
+                    showTimeSlots(day);
+                }
+            });
+        } else {
+            div.addEventListener('click',()=>{
+                if(confirm("Bloquer ce créneau pour indisponibilité ?")){
+                    reservations.push({jour:day,heure:hour,nom:"Indisponible",email:"",message:""});
+                    localStorage.setItem('reservations', JSON.stringify(reservations));
+                    generateAdminTable();
+                    showTimeSlots(day);
+                }
+            });
+        }
+        grid.appendChild(div);
+    });
 }
 
+// --- Tableau réservations ---
 function generateAdminTable(){
     const tbody=document.getElementById('adminTable');
     tbody.innerHTML="";
-    reservations.forEach(r=>{
+    reservations.forEach((r,index)=>{
         const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${r.jour}</td><td>${r.heure}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>`;
+        tr.innerHTML=`<td>${r.jour}</td><td>${r.heure}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>
+        <td><button style="background:#ff5555;color:white;border:none;border-radius:6px;cursor:pointer;" onclick="cancelByAdmin(${index})">Annuler</button></td>`;
         tbody.appendChild(tr);
     });
 }
 
-generateCalendar();
-generateAdminTable();
+// --- Annuler depuis tableau admin ---
+function cancelByAdmin(index){
+    if(confirm("Voulez-vous vraiment annuler cette réservation ?")){
+        reservations.splice(index,1);
+        localStorage.setItem('reservations', JSON.stringify(reservations));
+        generateAdminTable();
+        if(selectedDay) showTimeSlots(selectedDay);
+    }
+}
 </script>
 </body>
 </html>
