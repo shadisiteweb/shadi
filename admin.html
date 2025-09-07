@@ -63,6 +63,11 @@ textarea { width:100%; border-radius:8px; padding:8px; margin:6px 0; }
 <button class="blockBtn" onclick="publishAnnouncement()">Publier</button>
 <h4>Messages actuels :</h4>
 <ul id="announcementList"></ul>
+
+<h3>Message de bienvenue</h3>
+<textarea id="welcomeText" rows="2" placeholder="Écrire le message de bienvenue..."></textarea>
+<button class="blockBtn" onclick="setWelcomeMessage()">Enregistrer</button>
+<p>Message actuel : <span id="currentWelcome"></span></p>
 </div>
 
 <script>
@@ -78,10 +83,9 @@ function login(){
     if(u===adminUser.username && p===adminUser.password){
         document.getElementById('loginDiv').classList.add('hidden');
         document.getElementById('adminDiv').classList.remove('hidden');
-        generateCalendar(); generateAdminTable(); displayAnnouncements();
+        generateCalendar(); generateAdminTable(); displayAnnouncements(); displayWelcomeMessage();
     } else { document.getElementById('loginError').style.display='block'; }
 }
-
 function logout(){ window.location.reload(); }
 function toggleMode(){ document.body.classList.toggle('dark-mode'); }
 
@@ -159,6 +163,18 @@ function displayAnnouncements(){
         btn.onclick = ()=>{ if(confirm("Supprimer ce message ?")){ announcements.splice(index,1); localStorage.setItem('announcements', JSON.stringify(announcements)); displayAnnouncements(); } };
         li.appendChild(btn); ul.appendChild(li);
     });
+}
+
+// --- Message de bienvenue ---
+function setWelcomeMessage(){
+    const msg = document.getElementById('welcomeText').value.trim();
+    localStorage.setItem('welcomeMessage', msg);
+    displayWelcomeMessage();
+}
+
+function displayWelcomeMessage(){
+    const msg = localStorage.getItem('welcomeMessage') || "";
+    document.getElementById('currentWelcome').textContent = msg;
 }
 </script>
 </body>
