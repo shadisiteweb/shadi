@@ -8,7 +8,7 @@ body { font-family: Arial; transition:0.3s; background:#f4f4f4; color:#000; }
 .dark-mode { background:#121212; color:#fff; }
 .container { max-width:600px; margin:auto; padding:20px; }
 input, button, textarea, select { width:100%; padding:10px; margin:6px 0; border-radius:8px; border:1px solid #ccc; }
-button { background:#0077ff; color:white; border:none; cursor:pointer; }
+button { background:#0077ff; color:white; border:none; cursor:pointer; border-radius:6px; }
 button:hover { background:#0055cc; }
 .hidden { display:none; }
 .calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:10px 0; }
@@ -82,6 +82,7 @@ button:hover { background:#0055cc; }
 <textarea name="Message" rows="4"></textarea>
 
 <button type="submit">Réserver</button>
+<button type="button" style="background:#ff5555;" onclick="cancelReservation()">Annuler ma réservation</button>
 </form>
 
 <div class="contact">
@@ -105,7 +106,7 @@ Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com<
 <script>
 // --- Comptes ---
 let savedAccount = JSON.parse(localStorage.getItem('account'));
-const adminUser = {username:"admin", password:"admin"}; // admin par défaut
+const adminUser = {username:"admin", password:"admin"};
 
 function showCreateOrLogin(){
     if(savedAccount){
@@ -182,7 +183,7 @@ function generateCalendar(){
     }
 }
 
-// --- Horaires ---
+// --- Grille horaires ---
 function showTimeSlots(day){
   const container=document.getElementById('timeSlots');
   const grid=document.getElementById('timeGrid');
@@ -231,6 +232,33 @@ document.getElementById('resaForm').addEventListener('submit',function(e){
         selectedHour=null;
     }
 });
+
+// --- Annuler réservation ---
+function cancelReservation(){
+    if(selectedDay===null || selectedHour===null){
+        alert("Veuillez sélectionner la réservation à annuler (jour et créneau).");
+        return;
+    }
+
+    const index = reservations.findIndex(r=>r.jour===selectedDay && r.heure===selectedHour);
+    if(index===-1){
+        alert("Cette réservation n'existe pas.");
+        return;
+    }
+
+    if(confirm("Voulez-vous vraiment annuler cette réservation ?")){
+        reservations.splice(index,1);
+        localStorage.setItem('reservations', JSON.stringify(reservations));
+        alert("Réservation annulée !");
+        generateCalendar();
+        showTimeSlots(selectedDay);
+        selectedDay=null;
+        selectedHour=null;
+        document.getElementById('resaForm').reset();
+        document.getElementById('selectedDate').value='';
+        document.getElementById('timeSlots').classList.add('hidden');
+    }
+}
 
 // --- Admin ---
 function generateAdminTable(){
