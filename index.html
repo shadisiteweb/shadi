@@ -24,16 +24,16 @@ button:hover { background:#0055cc; }
 .slot { padding:15px; margin:3px; border-radius:6px; border:1px solid #0077ff; cursor:pointer; text-align:center; display:inline-block; min-width:60px; }
 .slot.reserved { background:#ccc; cursor:not-allowed; color:#666; }
 .slot.mine { background:#00aa55; color:white; }
-#splash { position:fixed;top:0;left:0;width:100%;height:100%;background:#0077ff;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:9999; color:white; font-size:24px; font-weight:bold; opacity:1; transition:opacity 1s;}
 #loginMessage { background:#e0f7ff; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold; text-align:center; }
+#splash { position:fixed;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:9999; color:white; font-size:24px; font-weight:bold; opacity:1; transition:opacity 1s;}
 </style>
 </head>
 <body>
 
 <!-- Splash message -->
-<div id="splash">Bienvenue sur Shadi Piscine !</div>
+<div id="splash"></div>
 
-<!-- Connexion utilisateur/admin -->
+<!-- Connexion utilisateur -->
 <div class="container" id="loginDiv">
   <div id="loginMessage"></div>
   <h2>Connexion - Shadi Piscine</h2>
@@ -96,14 +96,19 @@ Pour tout contact, veuillez envoyer un email à <strong>shadi.siteweb@gmail.com<
 <script>
 // --- Splash ---
 window.addEventListener('load', () => {
-  setTimeout(() => {
     const splash = document.getElementById('splash');
-    splash.style.opacity = 0;
-    setTimeout(()=>{ splash.style.display='none'; }, 1000);
-  }, 1500);
+    const text = localStorage.getItem('splashText') || "Bienvenue sur Shadi Piscine !";
+    const color = localStorage.getItem('splashColor') || "#0077ff";
+    splash.textContent = text;
+    splash.style.background = color;
+
+    setTimeout(() => {
+        splash.style.opacity = 0;
+        setTimeout(()=>{ splash.style.display='none'; }, 1000);
+    }, 1500);
 });
 
-// --- Afficher message personnalisé login ---
+// --- Message personnalisé login ---
 function showLoginMessage(){
     const msg = localStorage.getItem('welcomeMessage') || "Bienvenue !";
     document.getElementById('loginMessage').textContent = msg;
