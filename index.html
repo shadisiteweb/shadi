@@ -184,7 +184,7 @@ function generateCalendar(){
 }
 
 // --- Grille horaires ---
-function showTimeSlots(day){
+function showTimeSlots(day, clientName = null){
   const container=document.getElementById('timeSlots');
   const grid=document.getElementById('timeGrid');
   container.classList.remove('hidden');
@@ -198,15 +198,22 @@ function showTimeSlots(day){
     div.className="slot";
 
     const reserved = reservations.find(r=>r.jour===day && r.heure===hour);
+    
     if(reserved){
-      div.classList.add("reserved");
+        if(clientName && reserved.nom===clientName){
+            div.classList.remove("reserved"); // client peut annuler
+        } else {
+            div.classList.add("reserved"); // gris pour les autres
+        }
     } else {
-      div.addEventListener("click",()=>{
-        document.querySelectorAll(".slot").forEach(s=>s.classList.remove("selected"));
-        div.classList.add("selected");
-        selectedHour=hour;
-        document.getElementById("selectedDate").value=`Jour ${day} - ${hour}`;
-      });
+        if(!clientName){ // normal pour la réservation
+            div.addEventListener("click",()=>{
+                document.querySelectorAll(".slot").forEach(s=>s.classList.remove("selected"));
+                div.classList.add("selected");
+                selectedHour=hour;
+                document.getElementById("selectedDate").value=`Jour ${day} - ${hour}`;
+            });
+        }
     }
 
     grid.appendChild(div);
@@ -235,21 +242,31 @@ document.getElementById('resaForm').addEventListener('submit',function(e){
 
 // --- Annuler réservation ---
 function cancelReservation(){
-    if(selectedDay===null || selectedHour===null){
-        alert("Veuillez sélectionner la réservation à annuler (jour et créneau).");
+    const clientName = document.querySelector('input[name="Nom"]').value.trim();
+    if(!clientName){
+        alert("Veuillez entrer votre nom pour afficher vos réservations.");
+        return;
+    }
+    if(selectedDay===null){
+        alert("Veuillez sélectionner un jour pour voir vos réservations.");
         return;
     }
 
-    const index = reservations.findIndex(r=>r.jour===selectedDay && r.heure===selectedHour);
-    if(index===-1){
-        alert("Cette réservation n'existe pas.");
+    // Affiche uniquement les créneaux du client
+    showTimeSlots(selectedDay, clientName);
+
+    if(selectedHour===null){
+        alert("Cliquez sur le créneau que vous voulez annuler.");
         return;
     }
 
     if(confirm("Voulez-vous vraiment annuler cette réservation ?")){
-        reservations.splice(index,1);
-        localStorage.setItem('reservations', JSON.stringify(reservations));
-        alert("Réservation annulée !");
+        const index = reservations.findIndex(r=>r.jour===selectedDay && r.heure===selectedHour && r.nom===clientName);
+        if(index!==-1){
+            reservations.splice(index,1);
+            localStorage.setItem('reservations', JSON.stringify(reservations));
+            alert("Réservation annulée !");
+        }
         generateCalendar();
         showTimeSlots(selectedDay);
         selectedDay=null;
