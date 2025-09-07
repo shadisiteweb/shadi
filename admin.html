@@ -1,137 +1,116 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Admin - Réservations</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px; }
-    h1 { text-align:center; }
-    .hidden { display:none; }
-    table { border-collapse: collapse; margin:20px auto; width:90%; background:#fff; }
-    th,td { border:1px solid #ccc; padding:10px; text-align:center; }
-    .calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:20px auto; max-width:500px; }
-    .day { padding:20px; background:#fff; border:1px solid #ccc; cursor:pointer; }
-    .reserved { background:#999; color:#fff; }
-    button { padding:8px 15px; margin:5px; cursor:pointer; border:none; border-radius:5px; }
-    .btn-red { background:red; color:white; }
-    .btn-green { background:green; color:white; }
-    .btn-blue { background:#0077ff; color:white; }
-  </style>
+<meta charset="UTF-8">
+<title>Shadi Piscine - Admin</title>
+<style>
+body { font-family: Arial; background:#f4f4f4; color:#000; transition:0.3s; }
+.dark-mode { background:#121212; color:#fff; }
+.container { max-width:800px; margin:auto; padding:20px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+button { padding:10px 20px; border:none; border-radius:8px; cursor:pointer; margin:5px 0; }
+button:hover { opacity:0.85; }
+.logoutBtn { background:#ff5555; color:white; }
+.logoutBtn:hover { background:#cc0000; }
+.blockBtn { background:#0077ff; color:white; }
+.blockBtn:hover { background:#0055cc; }
+.calendar { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:15px 0; }
+.day, .slot { padding:20px; text-align:center; border-radius:8px; border:1px solid #ccc; cursor:pointer; background:white; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+.day:hover, .slot:hover { background:#cce5ff; }
+.day.reserved, .slot.reserved { background:#ccc; color:#666; cursor:not-allowed; }
+.day.selected, .slot.selected { border:2px solid #0077ff; }
+table { width:100%; border-collapse:collapse; margin-top:15px; }
+th, td { padding:10px; text-align:center; border:1px solid #ccc; border-radius:6px; }
+th { background:#0077ff; color:white; }
+tr:nth-child(even) { background:#f0f8ff; }
+</style>
 </head>
 <body>
 
-<h1>Panel Administrateur</h1>
+<div class="container" id="adminDiv">
+<h2>Admin - Shadi Piscine</h2>
+<button onclick="toggleMode()" class="blockBtn">🌙/☀️ Mode sombre/blanc</button>
+<button class="logoutBtn" onclick="logout()">Déconnexion</button>
 
-<!-- Connexion admin -->
-<div id="loginDiv">
-  <h2>Connexion</h2>
-  <input type="text" id="loginUser" placeholder="Nom d'utilisateur"><br>
-  <input type="password" id="loginPass" placeholder="Mot de passe"><br>
-  <button class="btn-green" onclick="login()">Se connecter</button>
+<h3>Calendrier (Cliquez sur un jour pour voir les créneaux)</h3>
+<div class="calendar" id="calendar"></div>
+
+<div id="timeSlots" class="hidden">
+  <h3>Créneaux horaires</h3>
+  <div class="calendar" id="timeGrid"></div>
 </div>
 
-<!-- Partie admin -->
-<div id="adminDiv" class="hidden">
-  <h2>Réservations</h2>
-  <button class="btn-blue" onclick="logout()">Déconnexion</button>
-  <table>
-    <thead>
-      <tr>
-        <th>Jour</th><th>Heure</th><th>Nom</th><th>Email</th><th>Message</th><th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="adminTable"></tbody>
-  </table>
-
-  <h2>Calendrier - Bloquer des jours</h2>
-  <p>Cliquez sur un jour pour le bloquer/débloquer.</p>
-  <div class="calendar" id="adminCalendar"></div>
+<h3>Réservations</h3>
+<table>
+<tr><th>Jour</th><th>Heure</th><th>Nom</th><th>Email</th><th>Message</th></tr>
+<tbody id="adminTable"></tbody>
+</table>
 </div>
 
 <script>
 let reservations = JSON.parse(localStorage.getItem('reservations')) || [];
-let blockedDays = JSON.parse(localStorage.getItem('blockedDays')) || [];
-const adminUser = {username:"admin", password:"admin"};
+const calendar = document.getElementById('calendar');
+let selectedDay = null;
 
-// --- Connexion admin ---
-function login(){
-  const u=document.getElementById('loginUser').value;
-  const p=document.getElementById('loginPass').value;
-  if(u===adminUser.username && p===adminUser.password){
-    document.getElementById('loginDiv').classList.add('hidden');
-    document.getElementById('adminDiv').classList.remove('hidden');
-    generateAdminTable();
-    generateAdminCalendar();
-  } else {
-    alert("Identifiants incorrects !");
-  }
+function toggleMode(){ document.body.classList.toggle('dark-mode'); }
+function logout(){ window.location.reload(); }
+
+function generateCalendar(){
+    calendar.innerHTML="";
+    for(let day=1;day<=30;day++){
+        const div=document.createElement('div');
+        div.textContent=day;
+        div.className='day';
+        div.addEventListener('click',()=>{
+            selectedDay=day;
+            showTimeSlots(day);
+            document.querySelectorAll('.day').forEach(d=>d.classList.remove('selected'));
+            div.classList.add('selected');
+        });
+        calendar.appendChild(div);
+    }
 }
 
-// --- Déconnexion ---
-function logout(){
-  document.getElementById('adminDiv').classList.add('hidden');
-  document.getElementById('loginDiv').classList.remove('hidden');
-  document.getElementById('loginUser').value="";
-  document.getElementById('loginPass').value="";
-}
+function showTimeSlots(day){
+  const container=document.getElementById('timeSlots');
+  const grid=document.getElementById('timeGrid');
+  container.classList.remove('hidden');
+  grid.innerHTML="";
 
-// --- Table des réservations ---
-function generateAdminTable(){
-  const tbody=document.getElementById('adminTable');
-  tbody.innerHTML="";
-  reservations.forEach((r,index)=>{
-    if(r.annule) return; // masquer si annulé
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td>${r.jour}</td>
-      <td>${r.heure}</td>
-      <td>${r.nom}</td>
-      <td>${r.email}</td>
-      <td>${r.message||""}</td>
-      <td><button class="btn-red" onclick="adminCancel(${index})">Annuler</button></td>
-    `;
-    tbody.appendChild(tr);
+  const slots=["09:00","10:30","12:00","13:30","15:00"];
+  slots.forEach(hour=>{
+    const div=document.createElement('div');
+    div.textContent=hour;
+    div.className="slot";
+
+    const reserved = reservations.find(r=>r.jour===day && r.heure===hour);
+    if(reserved){
+        div.classList.add("reserved");
+    } else {
+        div.addEventListener('click',()=>{
+            if(confirm("Bloquer ce créneau pour indisponibilité ?")){
+                reservations.push({jour:day,heure:hour,nom:"Indisponible",email:"",message:""});
+                localStorage.setItem('reservations', JSON.stringify(reservations));
+                showTimeSlots(day);
+                generateAdminTable();
+            }
+        });
+    }
+    grid.appendChild(div);
   });
 }
 
-// --- Annuler une réservation ---
-function adminCancel(index){
-  if(confirm("Voulez-vous annuler cette réservation ?")){
-    reservations[index].annule=true;
-    localStorage.setItem('reservations',JSON.stringify(reservations));
-    generateAdminTable();
-    generateAdminCalendar();
-    alert("Réservation annulée !");
-  }
-}
-
-// --- Calendrier admin (bloquer jours) ---
-function generateAdminCalendar(){
-  const adminCalendar=document.getElementById('adminCalendar');
-  adminCalendar.innerHTML="";
-  for(let day=1; day<=30; day++){
-    const div=document.createElement('div');
-    div.textContent=day;
-    div.className='day';
-
-    if(blockedDays.includes(day)){
-      div.classList.add('reserved');
-      div.title="Jour bloqué";
-    }
-
-    div.addEventListener('click', ()=>{
-      if(blockedDays.includes(day)){
-        blockedDays=blockedDays.filter(d=>d!==day);
-      } else {
-        blockedDays.push(day);
-      }
-      localStorage.setItem('blockedDays',JSON.stringify(blockedDays));
-      generateAdminCalendar();
+function generateAdminTable(){
+    const tbody=document.getElementById('adminTable');
+    tbody.innerHTML="";
+    reservations.forEach(r=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.jour}</td><td>${r.heure}</td><td>${r.nom}</td><td>${r.email}</td><td>${r.message}</td>`;
+        tbody.appendChild(tr);
     });
-
-    adminCalendar.appendChild(div);
-  }
 }
+
+generateCalendar();
+generateAdminTable();
 </script>
 </body>
 </html>
